@@ -46,6 +46,14 @@ smart-factory-kafka/
     └── kustomization.yaml            # (Optional) Bundles all manifests together
 ```
 
+## Fases do Projeto
+
+- **Fase 1 (Aplicações):** Desenvolvimento dos microsserviços em Python (Sensores, Processadores e Controlador) com suporte a banco de dados e empacotamento em Docker.
+- **Fase 2 (Infraestrutura):** Configuração dos manifestos YAML no Kubernetes, incluindo banco de dados, brokers Kafka e RBAC de segurança.
+- **Fase 3 (Automação):** Criação de um Makefile para padronizar e orquestrar as implantações no cluster.
+- **Fase 4 (Resiliência):** Simulação de falhas e de testes de elasticidade na infraestrutura via scripts shell.
+- **Fase 5 (Documentação):** Elaboração do relatório técnico e documentação final do projeto.
+
 ## Documentação
 
 - [Fase 1: Desenvolvimento das Aplicações (Produtor/Consumidor)](docs/fase1.md)

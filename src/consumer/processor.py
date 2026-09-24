@@ -10,7 +10,7 @@ import os
 import json
 import time
 import redis
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, KafkaProducer
 
 # Conexão com Redis (estado compartilhado) ou dicionário local (fallback)
 redis_host = os.environ.get("REDIS_HOST", "")
@@ -59,6 +59,7 @@ def obter_configuracao():
     return {
         "broker": os.environ.get("KAFKA_BROKER", "localhost:9092"),
         "topico": os.environ.get("KAFKA_TOPIC", "dados-sensores"),
+        "topico_comandos": os.environ.get("KAFKA_TOPIC_COMANDOS", "comandos-fabrica"),
         "group_id": os.environ.get("KAFKA_GROUP_ID", "sensor-group"),
         "janela_analise": float(os.environ.get("JANELA_ANALISE_SEG", "60.0")),
         "max_alertas": int(os.environ.get("MAX_ALERTAS_JANELA", "5")),
@@ -66,7 +67,7 @@ def obter_configuracao():
         "limites": limites
     }
 
-def verificar_estado_maquina(maquina_id, config, timestamp):
+def verificar_estado_maquina(maquina_id, config, timestamp, produtor):
     """
     Verifica se a máquina ultrapassou o limite de alertas em um curto período.
     Indica necessidade de matar o cliente ou escalar os recursos.
@@ -89,7 +90,12 @@ def verificar_estado_maquina(maquina_id, config, timestamp):
         if len(alertas_validos) >= config["max_alertas"]:
             print(f"\n[CRÍTICO GLOBAL] MÁQUINA PROBLEMÁTICA DETECTADA: {maquina_id}")
             print(f"Motivo: {config['max_alertas']} alertas em menos de {config['janela_analise']}s (Compartilhado via Redis).")
-            print(f"Recomendação: O cliente/sensor desta máquina deve ser reiniciado/morto!\n")
+            print(f"Enviando comando de KILL para o controlador...\n")
+            
+            produtor.send(
+                config["topico_comandos"],
+                value={"comando": "KILL", "maquina_id": maquina_id}
+            )
             
             # Limpa para não floodar
             redis_client.delete(chave_redis)
@@ -108,11 +114,16 @@ def verificar_estado_maquina(maquina_id, config, timestamp):
         if len(historico_alertas[maquina_id]) >= config["max_alertas"]:
             print(f"\n[CRÍTICO LOCAL] MÁQUINA PROBLEMÁTICA DETECTADA: {maquina_id}")
             print(f"Motivo: {config['max_alertas']} alertas em menos de {config['janela_analise']}s (Estado Local).")
-            print(f"Recomendação: O cliente/sensor desta máquina deve ser reiniciado/morto!\n")
+            print(f"Enviando comando de KILL para o controlador...\n")
+            
+            produtor.send(
+                config["topico_comandos"],
+                value={"comando": "KILL", "maquina_id": maquina_id}
+            )
             
             historico_alertas[maquina_id] = []
 
-def processar_mensagem(dados_mensagem, config):
+def processar_mensagem(dados_mensagem, config, produtor):
     """
     Processa uma única mensagem de sensor e verifica se há alertas.
     
@@ -136,7 +147,7 @@ def processar_mensagem(dados_mensagem, config):
                 print(f"Leitura normal para {chave}: {valor} na máquina '{maquina_id}'")
                 
     if houve_alerta:
-        verificar_estado_maquina(maquina_id, config, timestamp)
+        verificar_estado_maquina(maquina_id, config, timestamp, produtor)
 
 def main():
     """
@@ -159,11 +170,16 @@ def main():
         auto_offset_reset='earliest'
     )
     
+    produtor_comandos = KafkaProducer(
+        bootstrap_servers=[config["broker"]],
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
+    
     print("Conectado! Escutando por mensagens...")
     
     try:
         for mensagem in consumidor:
-            processar_mensagem(mensagem.value, config)
+            processar_mensagem(mensagem.value, config, produtor_comandos)
     except KeyboardInterrupt:
         print("Parando consumidor...")
     finally:

@@ -20,7 +20,7 @@ Sem o `StatefulSet`, após uma falha simulada ou real, os seus brokers Kafka vol
 
 O Kafka é o coração do barramento de eventos.
 
-- **`zookeper.yaml`**: Utilizado para gerenciar a eleição de líderes e metadados dos brokers Kafka.
+- **`zookeeper.yaml`**: Utilizado para gerenciar a eleição de líderes e metadados dos brokers Kafka.
 - **`kafka-statefulset.yaml`**: Sobem-se múltiplas instâncias (`replicas: 2`) usando `StatefulSet`. Isso garante que as identidades dos brokers sejam persistentes (ex: `kafka-0` e `kafka-1`), o que é essencial para estabilidade do barramento.
 - **`kafka-service.yaml`**: Um `Service Headless` (`clusterIP: None`) foi configurado para permitir a comunicação e resolução de DNS direta entre as réplicas do broker e os clientes produtores/consumidores.
 - **`kafka-init-job.yaml`**: Um `Job` simples executado uma única vez que aguarda o broker subir e cria os tópicos `dados-sensores` e `comandos-fabrica` com múltiplas partições, preparando o terreno antes que os microsserviços conectem.

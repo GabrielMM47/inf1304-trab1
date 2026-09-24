@@ -56,4 +56,5 @@ smart-factory-kafka/
 
 ## Documentação
 
-- [Fase 1: Desenvolvimento das Aplicações (Produtor/Consumidor)](docs/fase1.md)
+- [Fase 1: Desenvolvimento das Aplicações (Produtor/Consumidor)](docs/fase1.md)
+- [Fase 2: Configuração da Infraestrutura (Kubernetes)](docs/fase2.md)

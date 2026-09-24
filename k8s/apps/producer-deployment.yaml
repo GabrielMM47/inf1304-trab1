@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer-maquina-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: producer
+      sensor-id: maquina-1
+  template:
+    metadata:
+      labels:
+        app: producer
+        sensor-id: maquina-1
+    spec:
+      containers:
+      - name: producer
+        image: smart-factory-producer:latest
+        imagePullPolicy: Never
+        envFrom:
+        - configMapRef:
+            name: producer-config
+        env:
+        - name: MAQUINA_ID
+          value: "maquina-1"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer-maquina-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: producer
+      sensor-id: maquina-2
+  template:
+    metadata:
+      labels:
+        app: producer
+        sensor-id: maquina-2
+    spec:
+      containers:
+      - name: producer
+        image: smart-factory-producer:latest
+        imagePullPolicy: Never
+        envFrom:
+        - configMapRef:
+            name: producer-config
+        env:
+        - name: MAQUINA_ID
+          value: "maquina-2"

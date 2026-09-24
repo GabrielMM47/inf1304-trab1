@@ -3,39 +3,24 @@ kind: ConfigMap
 metadata:
   name: adminer-autologin
 data:
-  index.php: |
+  autologin.php: |
     <?php
-    // Recupera variáveis injetadas pelo ConfigMap do Postgres no K8s
-    $host = getenv("PG_HOST") ?: "postgres";
-    $user = getenv("POSTGRES_USER") ?: "postgres";
-    $pass = getenv("POSTGRES_PASSWORD") ?: "postgres";
-    $db   = getenv("POSTGRES_DB") ?: "fabrica";
-
-    // Injeção direta na query string (simula envio de formulário para auto-login no PostgreSQL)
-    $_GET["pgsql"] = $host;
-    $_GET["username"] = $user;
-    $_GET["db"] = $db;
+    $_GET["pgsql"] = getenv("PG_HOST") ?: "postgres";
+    $_GET["username"] = getenv("POSTGRES_USER") ?: "postgres";
+    $_GET["db"] = getenv("POSTGRES_DB") ?: "fabrica";
     
-    function adminer_object() {
-        class AdminerAutoLogin extends Adminer {
-            function name() {
-                return 'Smart Factory DB';
-            }
-            function credentials() {
-                // Força o retorno do servidor, usuário e senha a partir do ConfigMap
-                return array(getenv("PG_HOST") ?: "postgres", getenv("POSTGRES_USER") ?: "postgres", getenv("POSTGRES_PASSWORD") ?: "postgres");
-            }
-            function database() {
-                return getenv("POSTGRES_DB") ?: "fabrica";
-            }
-            function login($login, $password) {
-                // Pula a validação da tela de login (sempre aceita)
-                return true;
-            }
+    class AdminerAutoLogin {
+        function credentials() {
+            return array(getenv("PG_HOST") ?: "postgres", getenv("POSTGRES_USER") ?: "postgres", getenv("POSTGRES_PASSWORD") ?: "postgres");
         }
-        return new AdminerAutoLogin;
+        function database() {
+            return getenv("POSTGRES_DB") ?: "fabrica";
+        }
+        function login($login, $password) {
+            return true;
+        }
     }
-    include "./adminer.php";
+    return new AdminerAutoLogin();
 ---
 apiVersion: v1
 kind: Service
@@ -75,8 +60,8 @@ spec:
         - containerPort: 8080
         volumeMounts:
         - name: autologin-script
-          mountPath: /var/www/html/index.php
-          subPath: index.php
+          mountPath: /var/www/html/plugins-enabled/autologin.php
+          subPath: autologin.php
       volumes:
       - name: autologin-script
         configMap:

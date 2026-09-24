@@ -9,7 +9,7 @@ fi
 
 echo "Atualizando sistema e dependências..."
 apt-get update -y
-apt-get install -y curl wget apt-transport-https virtualbox virtualbox-ext-pack software-properties-common ca-certificates gnupg lsb-release
+apt-get install -y curl wget apt-transport-https ca-certificates gnupg lsb-release
 
 # Docker
 if ! command -v docker &> /dev/null; then
@@ -40,6 +40,11 @@ if ! command -v k3s &> /dev/null; then
 else
     echo "K3s já instalado."
 fi
+
+echo "Configurando permissões de execução para todos os scripts locais..."
+# Garante que os scripts da pasta scripts/ sejam executáveis
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+chmod +x $DIR/*.sh
 
 echo "======================================================================"
 echo "Instalação finalizada com sucesso!"

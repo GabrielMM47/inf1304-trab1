@@ -4,6 +4,35 @@ Neste repositório será desenvolvido o projeto da matéria INF1304 - Distribui�
 
 O objetivo é simular uma arquitetura produtor-consumidor em um cluster de Kubernetes.
 
+## Como Rodar (Quick Start)
+
+Se você está em um ambiente limpo (ex: Debian) e quer testar a arquitetura inteira do zero, siga os passos providenciados pelo nosso orquestrador (`Makefile`):
+
+1. **Instalar dependências vitais (Docker e K3s):**
+   ```bash
+   make init
+   ```
+2. **Ligar o cluster Kubernetes Local:**
+   ```bash
+   make start-cluster
+   ```
+3. **Construir as imagens e fazer o Deploy automático (Infra + Aplicações):**
+   ```bash
+   make all
+   ```
+4. **Acompanhar o cluster subindo e consultar os logs:**
+   ```bash
+   make status
+   make logs-consumer
+   ```
+5. *(Opcional)* **Acessar o banco de dados via interface visual:**
+   ```bash
+   make db-ui
+   ```
+   *(Abra `http://localhost:8080` no navegador - O login na base de dados é feito magicamente de forma automática).*
+
+---
+
 ## Grupo
 
 | Nome          | Matricula |

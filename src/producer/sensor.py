@@ -10,6 +10,7 @@ import json
 import time
 import random
 import uuid
+import psycopg2
 from kafka import KafkaProducer
 
 def obter_configuracao():
@@ -27,8 +28,52 @@ def obter_configuracao():
         "mult_temperatura": float(os.environ.get("MULTIPLICADOR_TEMPERATURA", "1.0")),
         "mult_vibracao": float(os.environ.get("MULTIPLICADOR_VIBRACAO", "1.5")),
         "mult_energia": float(os.environ.get("MULTIPLICADOR_ENERGIA", "2.0")),
-        "mult_co2": float(os.environ.get("MULTIPLICADOR_CO2", "5.0"))
+        "mult_co2": float(os.environ.get("MULTIPLICADOR_CO2", "5.0")),
+        "pg_host": os.environ.get("PG_HOST", ""),
+        "pg_port": os.environ.get("PG_PORT", "5432"),
+        "pg_db": os.environ.get("PG_DB", "fabrica"),
+        "pg_user": os.environ.get("PG_USER", "postgres"),
+        "pg_password": os.environ.get("PG_PASSWORD", "postgres")
     }
+
+def init_postgres(config):
+    if not config.get("pg_host"):
+        return None
+    try:
+        conn = psycopg2.connect(
+            host=config["pg_host"],
+            port=config["pg_port"],
+            dbname=config["pg_db"],
+            user=config["pg_user"],
+            password=config["pg_password"]
+        )
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS event_table (
+                    id SERIAL PRIMARY KEY,
+                    component_name VARCHAR(50),
+                    event_type VARCHAR(50),
+                    details JSONB,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        return conn
+    except Exception as e:
+        print(f"Aviso: Não foi possível conectar ao PostgreSQL: {e}")
+        return None
+
+def log_event(pg_conn, component, event_type, details):
+    if not pg_conn:
+        return
+    try:
+        with pg_conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO event_table (component_name, event_type, details)
+                VALUES (%s, %s, %s)
+            """, (component, event_type, json.dumps(details)))
+    except Exception as e:
+        print(f"Erro ao registrar evento: {e}")
 
 def gerar_dados(tipo):
     """
@@ -56,9 +101,12 @@ def main():
     Inicializa o produtor Kafka e envia dados simulados continuamente.
     """
     config = obter_configuracao()
+    pg_conn = init_postgres(config)
     
     print(f"Iniciando produtor. Conectando ao broker {config['broker']}...")
     print(f"Máquina ID: {config['maquina_id']}")
+    
+    log_event(pg_conn, "PRODUTOR", "START", {"maquina_id": config["maquina_id"], "topico": config["topico"]})
     
     produtor = KafkaProducer(
         bootstrap_servers=[config["broker"]],
@@ -92,6 +140,7 @@ def main():
                         key=config["maquina_id"].encode('utf-8'),
                         value=dado
                     )
+                    log_event(pg_conn, "PRODUTOR", "SEND_DATA", dado)
                     print(f"Enviado: {dado}")
                     props["ultimo_envio"] = agora
             
@@ -101,6 +150,8 @@ def main():
         print("Parando produtor...")
     finally:
         produtor.close()
+        if pg_conn:
+            pg_conn.close()
 
 if __name__ == "__main__":
     main()

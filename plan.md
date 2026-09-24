@@ -13,6 +13,9 @@ Nesta etapa, o foco é escrever os produtores e consumidores com boas práticas 
 * **Gestão de Configuração:** Não utilize constantes hard-coded no código. Todas as configurações (endereço do broker, nome do tópico, limites de alerta) devem ser lidas a partir de variáveis de ambiente.
 
 
+* **Banco de Dados (Armazenamento):** Integre o consumidor a um banco PostgreSQL. Todos os dados processados e alertas gerados devem ser persistidos para histórico, utilizando conexão baseada em variáveis de ambiente.
+
+
 * **Containerização:** Escreva um `Dockerfile` para o produtor e outro para o consumidor, garantindo que as aplicações rodem em containers isolados.
 
 
@@ -28,6 +31,9 @@ Com as imagens Docker prontas, estruture os recursos no Kubernetes.
 
 
 * **ConfigMaps e Secrets:** Defina um arquivo YAML de `ConfigMap` (ou `application.properties`) para injetar as variáveis de ambiente necessárias nos containers dos produtores e consumidores.
+
+
+* **Banco de Dados PostgreSQL:** Crie os manifestos YAML (`StatefulSet` e `Service`) para subir o banco de dados no cluster, com os devidos volumes persistentes (`PVC`) para os dados armazenados.
 
 
 * **Deployments das Aplicações:** Escreva os manifestos YAML de `Deployment` para os sensores (produtores) e para os consumidores, permitindo que rodem em múltiplos pods.

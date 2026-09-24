@@ -7,6 +7,7 @@ para deletar pods (sensores) problemáticos.
 
 import os
 import json
+import psycopg2
 from kafka import KafkaConsumer
 from kubernetes import client, config as k8s_config
 
@@ -15,8 +16,52 @@ def obter_configuracao():
         "broker": os.environ.get("KAFKA_BROKER", "localhost:9092"),
         "topico": os.environ.get("KAFKA_TOPIC_COMANDOS", "comandos-fabrica"),
         "group_id": os.environ.get("KAFKA_GROUP_ID_CONTROLADOR", "controlador-instancias-group"),
-        "namespace": os.environ.get("NAMESPACE", "default")
+        "namespace": os.environ.get("NAMESPACE", "default"),
+        "pg_host": os.environ.get("PG_HOST", ""),
+        "pg_port": os.environ.get("PG_PORT", "5432"),
+        "pg_db": os.environ.get("PG_DB", "fabrica"),
+        "pg_user": os.environ.get("PG_USER", "postgres"),
+        "pg_password": os.environ.get("PG_PASSWORD", "postgres")
     }
+
+def init_postgres(config):
+    if not config.get("pg_host"):
+        return None
+    try:
+        conn = psycopg2.connect(
+            host=config["pg_host"],
+            port=config["pg_port"],
+            dbname=config["pg_db"],
+            user=config["pg_user"],
+            password=config["pg_password"]
+        )
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS event_table (
+                    id SERIAL PRIMARY KEY,
+                    component_name VARCHAR(50),
+                    event_type VARCHAR(50),
+                    details JSONB,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        return conn
+    except Exception as e:
+        print(f"Aviso: Não foi possível conectar ao PostgreSQL: {e}")
+        return None
+
+def log_event(pg_conn, component, event_type, details):
+    if not pg_conn:
+        return
+    try:
+        with pg_conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO event_table (component_name, event_type, details)
+                VALUES (%s, %s, %s)
+            """, (component, event_type, json.dumps(details)))
+    except Exception as e:
+        print(f"Erro ao registrar evento: {e}")
 
 def init_k8s():
     """Inicializa a conexão com a API do Kubernetes."""
@@ -33,7 +78,7 @@ def init_k8s():
         except Exception as ex:
             print(f"Não foi possível autenticar no Kubernetes: {ex}")
 
-def matar_pod(maquina_id, namespace):
+def matar_pod(maquina_id, namespace, pg_conn):
     """
     Busca e deleta os pods associados à maquina_id utilizando a API do Kubernetes.
     A filtragem é feita assumindo que o pod tem um label `sensor-id=maquina_id`.
@@ -46,6 +91,7 @@ def matar_pod(maquina_id, namespace):
         pods = v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
         if not pods.items:
             print(f"[-] Nenhum pod encontrado ativo para a máquina {maquina_id}.")
+            log_event(pg_conn, "CONTROLADOR", "MACHINE_NOT_FOUND", {"maquina_id": maquina_id})
             return
             
         for pod in pods.items:
@@ -53,14 +99,18 @@ def matar_pod(maquina_id, namespace):
             print(f"[*] Deletando pod problemático: {pod_name}...")
             v1.delete_namespaced_pod(name=pod_name, namespace=namespace)
             print(f"[+] Pod {pod_name} deletado com sucesso!")
+            log_event(pg_conn, "CONTROLADOR", "MACHINE_KILLED", {"maquina_id": maquina_id, "pod_name": pod_name})
     except Exception as e:
         print(f"[ERRO] Falha ao interagir com a API do K8s para a máquina {maquina_id}: {e}")
+        log_event(pg_conn, "CONTROLADOR", "KILL_ERROR", {"maquina_id": maquina_id, "error": str(e)})
 
 def main():
     config = obter_configuracao()
+    pg_conn = init_postgres(config)
     init_k8s()
     
     print(f"Iniciando Controlador. Conectando ao broker {config['broker']}...")
+    log_event(pg_conn, "CONTROLADOR", "START", {"namespace": config["namespace"]})
     
     consumer = KafkaConsumer(
         config["topico"],
@@ -80,11 +130,13 @@ def main():
             
             if comando == "KILL" and maquina_id:
                 print(f"\n>> Comando recebido: MATAR instância da máquina {maquina_id}")
-                matar_pod(maquina_id, config["namespace"])
+                matar_pod(maquina_id, config["namespace"], pg_conn)
     except KeyboardInterrupt:
         print("Parando controlador...")
     finally:
         consumer.close()
+        if pg_conn:
+            pg_conn.close()
 
 if __name__ == "__main__":
     main()

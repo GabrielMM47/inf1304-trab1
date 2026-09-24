@@ -45,3 +45,7 @@ smart-factory-kafka/
     │   └── consumer-deployment.yaml  # Scalable pods in the same consumer-group
     └── kustomization.yaml            # (Optional) Bundles all manifests together
 ```
+
+## Documentação
+
+- [Fase 1: Desenvolvimento das Aplicações (Produtor/Consumidor)](docs/fase1.md)

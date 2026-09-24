@@ -1,4 +1,4 @@
-.PHONY: all init start-cluster build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-consumers db-reset
+.PHONY: all init start-cluster build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-consumers db-reset kafka-lag test-all
 
 # Imagens Docker
 PRODUCER_IMG := smart-factory-producer:latest
@@ -62,6 +62,10 @@ status:
 logs-producer:
 	kubectl logs -l app=producer -f
 
+kafka-lag:
+	@echo "Inspecionando a fila (LAG) dos Consumidores no Kafka..."
+	kubectl exec -t kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
 logs-consumer:
 	kubectl logs -l app=consumer -f
 
@@ -89,3 +93,7 @@ scale-producers:
 scale-consumers:
 	@echo "Escalando o grupo de consumidores para 4 réplicas para acelerar o processamento..."
 	kubectl scale deployment consumer --replicas=4
+
+test-all:
+	@chmod +x scripts/test_interactive.sh
+	@./scripts/test_interactive.sh

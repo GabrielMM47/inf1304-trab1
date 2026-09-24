@@ -21,7 +21,7 @@ kubectl delete pod $POD_NAME --force --grace-period=0
 
 echo "✅ Falha injetada com sucesso!"
 echo "O que observar agora:"
-echo "1. O Zookeeper notará a queda do broker e elegerá o outro broker como líder das partições."
+echo "1. O Quorum KRaft (Controller) notará a queda do broker e elegerá o outro broker como líder das partições."
 echo "2. O tráfego dos Sensores não deve ser interrompido."
 echo "3. O Kubernetes recriará o $POD_NAME mantendo o mesmo disco rígido!"
 echo "Para acompanhar a recriação, rode: kubectl get pods -l app=kafka -w"

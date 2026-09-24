@@ -16,6 +16,13 @@ spec:
       containers:
       - name: kafka
         image: confluentinc/cp-kafka:latest
+        env:
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "2"
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "2"
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "1"
         command:
           - /scripts/setup-kraft.sh
         ports:

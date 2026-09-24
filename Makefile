@@ -1,4 +1,4 @@
-.PHONY: all init start-cluster build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-consumers
+.PHONY: all init start-cluster build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-consumers db-reset
 
 # Imagens Docker
 PRODUCER_IMG := smart-factory-producer:latest
@@ -48,6 +48,8 @@ clean:
 	@echo "Removendo todos os recursos do Kubernetes..."
 	kubectl delete -f k8s/apps/ || true
 	kubectl delete -f k8s/kafka/ || true
+	@echo "Encerrando túneis de rede ativos..."
+	pkill -f "[k]ubectl port-forward" || true
 
 status:
 	@echo "Status dos Pods:"
@@ -69,6 +71,11 @@ logs-controlador:
 db-shell:
 	@echo "Acessando o terminal do PostgreSQL (Digite 'exit' para sair)..."
 	kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica
+
+db-reset:
+	@echo "Deletando o volume persistente do PostgreSQL para um Deep Clean..."
+	kubectl delete pvc pg-data-postgres-0 || true
+	@echo "Banco resetado! Na próxima vez que o PostgreSQL subir, ele estará zerado."
 
 db-ui:
 	@echo "Abrindo o painel Adminer na porta 8080 (Acesse http://localhost:8080 ou pelo IP remoto na porta 8080)..."

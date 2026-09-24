@@ -25,6 +25,9 @@ data:
     controller.listener.names=CONTROLLER
     listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
     log.dirs=/tmp/kraft-logs
+    offsets.topic.replication.factor=${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-2}
+    transaction.state.log.replication.factor=${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR:-2}
+    transaction.state.log.min.isr=${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR:-1}
     EOF
     
     # 3. Formata o disco para o KRaft com um UUID de cluster fixo

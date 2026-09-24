@@ -28,7 +28,7 @@ fi
 # K3s (Kubernetes leve - já inclui o Kubectl)
 if ! command -v k3s &> /dev/null; then
     echo "Instalando K3s..."
-    curl -sfL https://get.k3s.io | sh -s - server
+    curl -sfL https://get.k3s.io | sh -s - server --write-kubeconfig-mode 644
     
     # Prepara o KUBECONFIG para o usuário regular não precisar de sudo ao usar o kubectl
     if [ -n "$SUDO_USER" ]; then

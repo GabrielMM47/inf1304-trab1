@@ -7,7 +7,7 @@ spec:
     spec:
       containers:
       - name: init-topics
-        image: bitnami/kafka:3.4.0
+        image: apache/kafka:latest
         command:
         - /bin/bash
         - -c

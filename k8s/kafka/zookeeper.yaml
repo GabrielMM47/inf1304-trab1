@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
       - name: zookeeper
-        image: bitnami/zookeeper:3.8
+        image: zookeeper:latest
         env:
         - name: ALLOW_ANONYMOUS_LOGIN
           value: "yes"

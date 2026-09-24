@@ -26,8 +26,5 @@ spec:
       containers:
       - name: zookeeper
         image: zookeeper:latest
-        env:
-        - name: ALLOW_ANONYMOUS_LOGIN
-          value: "yes"
         ports:
         - containerPort: 2181

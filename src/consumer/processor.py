@@ -9,6 +9,7 @@ Também avalia a frequência de alertas por máquina.
 import os
 import json
 import time
+import random
 import redis
 import psycopg2
 from kafka import KafkaConsumer, KafkaProducer
@@ -192,6 +193,11 @@ def processar_mensagem(dados_mensagem, config, produtor, pg_conn):
         dados_mensagem (dict): O conteúdo (payload) com os dados do sensor.
         config (dict): As configurações que contêm limites e janela de análise.
     """
+    # Simula um processamento analítico pesado (ex: IA/Machine Learning para anomalias)
+    # Isso faz o pod demorar ~1s por requisição. Fundamental para gerar enfileiramento (backlog)
+    # e provar que o escalonamento elástico de Consumidores resolve o gargalo.
+    time.sleep(random.uniform(0.5, 1.5))
+
     limites = config["limites"]
     maquina_id = dados_mensagem.get("maquina_id", "desconhecida")
     timestamp = dados_mensagem.get("timestamp")

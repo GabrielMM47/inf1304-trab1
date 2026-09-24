@@ -1,4 +1,4 @@
-.PHONY: all init start-cluster build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador db-shell db-ui
+.PHONY: all init start-cluster build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-consumers
 
 # Imagens Docker
 PRODUCER_IMG := smart-factory-producer:latest
@@ -74,3 +74,11 @@ db-ui:
 	@echo "Abrindo o painel Adminer na porta 8080 (Acesse http://localhost:8080 no navegador)..."
 	@echo "O Auto-Login está ativado. Você será conectado automaticamente na base fabrica!"
 	kubectl port-forward svc/adminer 8080:8080
+
+scale-producers:
+	@echo "Escalando a máquina-1 para 3 instâncias para gerar altíssima carga no Kafka..."
+	kubectl scale deployment producer-maquina-1 --replicas=3
+
+scale-consumers:
+	@echo "Escalando o grupo de consumidores para 4 réplicas para acelerar o processamento..."
+	kubectl scale deployment consumer --replicas=4

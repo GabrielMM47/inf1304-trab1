@@ -59,4 +59,5 @@ smart-factory-kafka/
 - [Fase 1: Desenvolvimento das Aplicações (Produtor/Consumidor)](docs/fase1.md)
 - [Fase 2: Configuração da Infraestrutura (Kubernetes)](docs/fase2.md)
 - [Fase 3: Automação e Orquestração (Makefile)](docs/fase3.md)
-- [Visualização e Acesso ao Banco de Dados (Queries Úteis)](docs/banco-de-dados.md)
+- [Visualização e Acesso ao Banco de Dados (Queries Úteis)](docs/banco-de-dados.md)
+- [Fase 4: Simulação de Falhas e Elasticidade](docs/fase4.md)

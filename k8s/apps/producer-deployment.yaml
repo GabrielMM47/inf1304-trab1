@@ -24,6 +24,8 @@ spec:
         env:
         - name: MAQUINA_ID
           value: "maquina-1"
+        - name: GENERATION_INTERVAL
+          value: "2.0" # Comportamento padrão
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -51,3 +53,43 @@ spec:
         env:
         - name: MAQUINA_ID
           value: "maquina-2"
+        - name: GENERATION_INTERVAL
+          value: "0.5" # Produz 4x mais rápido
+        - name: MULTIPLICADOR_TEMPERATURA
+          value: "0.5" # Máquina mais fria
+        - name: MULTIPLICADOR_VIBRACAO
+          value: "3.5" # Muita vibração!
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer-maquina-3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: producer
+      sensor-id: maquina-3
+  template:
+    metadata:
+      labels:
+        app: producer
+        sensor-id: maquina-3
+    spec:
+      containers:
+      - name: producer
+        image: smart-factory-producer:latest
+        imagePullPolicy: Never
+        envFrom:
+        - configMapRef:
+            name: producer-config
+        env:
+        - name: MAQUINA_ID
+          value: "maquina-3"
+        - name: GENERATION_INTERVAL
+          value: "5.0" # Bem mais lenta
+        - name: MULTIPLICADOR_TEMPERATURA
+          value: "3.0" # Super quente, gera anomalias!
+        - name: MULTIPLICADOR_ENERGIA
+          value: "4.0" # Gasta muita energia

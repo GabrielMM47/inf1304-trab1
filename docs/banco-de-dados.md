@@ -68,3 +68,37 @@ WHERE houve_alerta = true
 GROUP BY tipo_sensor
 ORDER BY total_alertas DESC;
 ```
+
+**5. Distribuição de Alertas por Máquina**
+*(Descobrir quais máquinas da fábrica estão dando mais dor de cabeça em tempo real).*
+```sql
+SELECT maquina_id, tipo_sensor, COUNT(*) as total_alertas
+FROM leituras_sensores
+WHERE houve_alerta = true
+GROUP BY maquina_id, tipo_sensor
+ORDER BY total_alertas DESC;
+```
+
+**6. Estresse Máximo, Mínimo e Médio Absoluto**
+*(Obter as estatísticas absolutas dos sensores para entender os picos de estresse gerados na fábrica).*
+```sql
+SELECT 
+    maquina_id, 
+    tipo_sensor, 
+    MAX(valor) AS pico_maximo, 
+    MIN(valor) AS minimo, 
+    ROUND(AVG(valor), 2) AS media,
+    COUNT(*) FILTER (WHERE houve_alerta = true) AS total_alertas
+FROM leituras_sensores
+GROUP BY maquina_id, tipo_sensor
+ORDER BY maquina_id, tipo_sensor;
+```
+
+**7. Volume de Eventos por Componente**
+*(Verificar o balanço do fluxo arquitetural: se o consumidor está processando mais dados do que lançando alertas, e se o controlador está atuando na proporção correta).*
+```sql
+SELECT component_name, event_type, COUNT(*) as volume
+FROM event_table
+GROUP BY component_name, event_type
+ORDER BY volume DESC;
+```

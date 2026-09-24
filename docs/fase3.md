@@ -4,12 +4,16 @@ Nesta fase, introduzimos um `Makefile` na raiz do projeto. Seu objetivo é encap
 
 ## Targets Disponíveis
 
-### 1. Construção de Imagens (`make build`)
-Como os manifestos Kubernetes foram configurados com `imagePullPolicy: Never`, o cluster K8s local (ex: Docker Desktop ou Minikube) busca as imagens no repositório local do próprio Docker (sem necessidade de um *container registry* na nuvem). 
+### 1. Setup Local de Infraestrutura (`make init` e `make start-cluster`)
+Se você clonou o repositório em uma instância de nuvem virgem (ex: Debian) e não tem nada preparado:
+- **`make init`**: Roda um script shell automatizado que baixa e instala o **Docker** e o **K3s** (uma distribuição Kubernetes extremamente leve perfeita para VMs e cloud), configurando também os arquivos nativos de acesso ao `kubectl`.
+- **`make start-cluster`**: Garante que o serviço do K3s está ligado e operacional.
+
+### 2. Construção de Imagens (`make build`)
+Como os manifestos Kubernetes foram configurados com `imagePullPolicy: Never`, o cluster não tentará baixar as imagens da internet (DockerHub), mas buscará do seu registro interno (containerd do K3s).
 O comando `make build`:
-- Acessa as pastas `src/producer`, `src/consumer` e `src/controlador`.
-- Aciona o `docker build` de cada um de forma automatizada.
-- Etiqueta (*tags*) as imagens exatamente como referenciado nos YAMLs (ex: `smart-factory-producer:latest`).
+- Acessa as pastas `src/producer`, `src/consumer` e `src/controlador` e aciona os processos de `docker build` no daemon local.
+- Compacta as 3 imagens geradas e as **importa para dentro do cluster K3s** (`k3s ctr images import`), eliminando inteiramente a necessidade de exportar imagens para um *container registry* na nuvem.
 
 ### 2. Implantação Automática (`make deploy`)
 O `make deploy` atua como um orquestrador mestre, chamando internamente dois outros targets:

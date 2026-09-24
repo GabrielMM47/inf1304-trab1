@@ -1,4 +1,4 @@
-.PHONY: all build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador
+.PHONY: all init start-cluster build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador db-shell db-ui
 
 # Imagens Docker
 PRODUCER_IMG := smart-factory-producer:latest
@@ -7,11 +7,22 @@ CONTROLADOR_IMG := smart-factory-controlador:latest
 
 all: build deploy
 
+init:
+	@echo "Instalando dependências no Debian (requer senha sudo)..."
+	chmod +x scripts/install_deps.sh
+	sudo ./scripts/install_deps.sh
+
+start-cluster:
+	@echo "Garantindo que o K3s está rodando..."
+	sudo systemctl start k3s
+
 build:
-	@echo "Construindo imagens Docker..."
+	@echo "Construindo imagens Docker localmente..."
 	docker build -t $(PRODUCER_IMG) ./src/producer
 	docker build -t $(CONSUMER_IMG) ./src/consumer
 	docker build -t $(CONTROLADOR_IMG) ./src/controlador
+	@echo "Importando as imagens construídas para dentro do cluster K3s..."
+	docker save $(PRODUCER_IMG) $(CONSUMER_IMG) $(CONTROLADOR_IMG) | sudo k3s ctr images import -
 
 deploy-kafka:
 	@echo "Subindo cluster Kafka e Zookeeper..."

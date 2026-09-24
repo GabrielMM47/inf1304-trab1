@@ -2,7 +2,21 @@
 
 Esta seção detalha os manifestos YAML responsáveis por subir toda a arquitetura de sistemas distribuídos dentro de um cluster Kubernetes.
 
-## 1. O Cluster Kafka (`k8s/kafka/`)
+## 1. O Padrão Arquitetural: StatefulSet vs Deployment
+
+A forma mais clara de entender as decisões de infraestrutura desta fase é compreender a diferença entre `StatefulSet` e `Deployment`.
+
+Em um **Deployment** (usado pelos seus sensores, processadores e controladores), os pods são como clones descartáveis. O Kubernetes cria pods com nomes aleatórios (ex: `sensor-7f8b9d-xyz`). Se um pod morre, outro com um nome totalmente novo nasce no lugar. Eles não guardam estado e a identidade individual não importa.
+
+O **StatefulSet**, por outro lado, é desenhado para componentes que não podem perder a identidade nem a memória (o "estado"), como os brokers do **Kafka** e o banco de dados **PostgreSQL**. Ele fornece três garantias essenciais que um Deployment não consegue entregar:
+
+* **Identidade de Rede Fixa e Sequencial:** O `StatefulSet` batiza os pods com nomes ordenados e previsíveis, como `kafka-0` e `kafka-1`. Se o `kafka-0` sofrer uma falha crítica, o Kubernetes garantirá que o pod substituto nasça com o exato nome `kafka-0`. Isso é vital para o protocolo do Kafka, pois os clientes precisam se conectar diretamente ao broker específico que lidera uma partição.
+* **Armazenamento Vinculado à Identidade (Discos Persistentes):** Esta é a principal vantagem. Quando o `kafka-0` nasce, o Kubernetes aloca um disco virtual (`PVC`) exclusivo para ele. Se a máquina física for reiniciada, o Kubernetes sobe o novo `kafka-0` em outro servidor e, automaticamente, desconecta o disco antigo e o pluga no novo pod. O banco de dados ou o broker acorda com todos os logs e mensagens intactos no disco.
+* **Ordem Estrita de Execução:** Em sistemas distribuídos, subir tudo de uma vez gera caos de rede. O `StatefulSet` inicializa o `kafka-0`; apenas quando este estiver 100% saudável, ele cria o `kafka-1`. Isso permite que clusters com múltiplos brokers se formem e elejam líderes de forma organizada.
+
+Sem o `StatefulSet`, após uma falha simulada ou real, os seus brokers Kafka voltariam com nomes e IPs aleatórios e desvinculados dos discos originais, corrompendo as partições dos tópicos e inviabilizando a tolerância a falhas exigida pelo projeto.
+
+## 2. O Cluster Kafka (`k8s/kafka/`)
 
 O Kafka é o coração do barramento de eventos.
 
@@ -11,12 +25,12 @@ O Kafka é o coração do barramento de eventos.
 - **`kafka-service.yaml`**: Um `Service Headless` (`clusterIP: None`) foi configurado para permitir a comunicação e resolução de DNS direta entre as réplicas do broker e os clientes produtores/consumidores.
 - **`kafka-init-job.yaml`**: Um `Job` simples executado uma única vez que aguarda o broker subir e cria os tópicos `dados-sensores` e `comandos-fabrica` com múltiplas partições, preparando o terreno antes que os microsserviços conectem.
 
-## 2. Banco de Dados (`k8s/apps/postgres.yaml`)
+## 3. Bancos de Dados (`postgres.yaml` e `redis.yaml`)
 
-O banco de dados PostgreSQL roda como um `StatefulSet`. Diferente de aplicações puramente escaláveis (stateless), o banco de dados exige um volume persistente garantido pelo Kubernetes:
-- Utiliza um `VolumeClaimTemplate` injetando um `PVC (PersistentVolumeClaim)` que atrela um disco físico/virtual ao banco. Se o pod reiniciar ou for movido de nó, os logs e eventos de auditoria não são perdidos.
+- **`postgres.yaml`**: O banco de dados PostgreSQL roda como um `StatefulSet`. Diferente de aplicações puramente escaláveis (stateless), exige um volume persistente garantido pelo Kubernetes utilizando um `VolumeClaimTemplate` injetando um `PVC (PersistentVolumeClaim)` que atrela um disco físico/virtual ao banco. Se o pod reiniciar, os logs e eventos de auditoria não são perdidos.
+- **`redis.yaml`**: O Redis roda como um `Deployment` simples em memória. Ele atua como um armazenamento distribuído ultra-rápido para os processadores compartilharem o histórico de falhas das máquinas em milissegundos antes de lançarem o alerta crítico.
 
-## 3. As Aplicações (`k8s/apps/`)
+## 4. As Aplicações (`k8s/apps/`)
 
 - **`configmap.yaml`**: Centraliza todas as variáveis de ambiente necessárias para evitar *hard-coding* (hosts, portas, tópicos, limiares de alertas).
 - **`producer-deployment.yaml`**: Implanta duas "máquinas" virtuais distintas (`maquina-1` e `maquina-2`). Usa deployments independentes com env vars específicas para provar a escalabilidade e paralelismo da injeção de dados.

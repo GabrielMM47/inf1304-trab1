@@ -25,8 +25,8 @@ build:
 	docker save $(PRODUCER_IMG) $(CONSUMER_IMG) $(CONTROLADOR_IMG) | sudo k3s ctr images import -
 
 deploy-kafka:
-	@echo "Subindo cluster Kafka e Zookeeper..."
-	kubectl apply -f k8s/kafka/zookeeper.yaml
+	@echo "Subindo cluster Kafka em modo KRaft (Sem Zookeeper!)..."
+	kubectl apply -f k8s/kafka/kafka-scripts.yaml
 	kubectl apply -f k8s/kafka/kafka-service.yaml
 	kubectl apply -f k8s/kafka/kafka-statefulset.yaml
 	kubectl apply -f k8s/kafka/kafka-init-job.yaml
@@ -71,9 +71,9 @@ db-shell:
 	kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica
 
 db-ui:
-	@echo "Abrindo o painel Adminer na porta 8080 (Acesse http://localhost:8080 no navegador)..."
+	@echo "Abrindo o painel Adminer na porta 8080 (Acesse http://localhost:8080 ou pelo IP remoto na porta 8080)..."
 	@echo "O Auto-Login está ativado. Você será conectado automaticamente na base fabrica!"
-	kubectl port-forward svc/adminer 8080:8080
+	kubectl port-forward svc/adminer 8080:8080 --address 0.0.0.0
 
 scale-producers:
 	@echo "Escalando a máquina-1 para 3 instâncias para gerar altíssima carga no Kafka..."

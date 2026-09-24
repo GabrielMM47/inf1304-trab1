@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-scripts
+data:
+  setup-kraft.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Iniciando setup do Kafka em modo KRaft..."
+    
+    # 1. Extrai o ID do nó a partir do hostname (ex: kafka-0 -> 0)
+    export KAFKA_NODE_ID=${HOSTNAME##*-}
+    export ADVERTISED_LISTENERS="PLAINTEXT://${HOSTNAME}.kafka-headless.default.svc.cluster.local:9092"
+    
+    echo "Configurando nó ID: $KAFKA_NODE_ID"
+    
+    # 2. Cria o arquivo de configuração KRaft
+    cat <<EOF > /tmp/kraft.properties
+    process.roles=broker,controller
+    node.id=$KAFKA_NODE_ID
+    controller.quorum.voters=0@kafka-0.kafka-headless.default.svc.cluster.local:9093,1@kafka-1.kafka-headless.default.svc.cluster.local:9093
+    listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+    advertised.listeners=$ADVERTISED_LISTENERS
+    controller.listener.names=CONTROLLER
+    listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    log.dirs=/tmp/kraft-logs
+    EOF
+    
+    # 3. Formata o disco para o KRaft com um UUID de cluster fixo
+    echo "Formatando logs KRaft..."
+    kafka-storage format --ignore-formatted -t "MkU3OEVBNTcwNTJENDM2Qk" -c /tmp/kraft.properties
+    
+    # 4. Substitui o processo atual (exec) pelo broker do Kafka
+    echo "Iniciando o Kafka Broker..."
+    exec kafka-server-start /tmp/kraft.properties

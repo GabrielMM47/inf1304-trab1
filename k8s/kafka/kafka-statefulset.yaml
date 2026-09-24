@@ -16,16 +16,16 @@ spec:
       containers:
       - name: kafka
         image: confluentinc/cp-kafka:latest
-        env:
-        - name: KAFKA_ZOOKEEPER_CONNECT
-          value: "zookeeper:2181"
-        - name: KAFKA_LISTENERS
-          value: "PLAINTEXT://0.0.0.0:9092"
-        - name: KAFKA_ADVERTISED_LISTENERS
-          value: "PLAINTEXT://$(MY_POD_NAME).kafka-headless.default.svc.cluster.local:9092"
-        - name: MY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
+        command:
+          - /scripts/setup-kraft.sh
         ports:
         - containerPort: 9092
+        - containerPort: 9093
+        volumeMounts:
+        - name: scripts-volume
+          mountPath: /scripts
+      volumes:
+      - name: scripts-volume
+        configMap:
+          name: kafka-scripts
+          defaultMode: 0755

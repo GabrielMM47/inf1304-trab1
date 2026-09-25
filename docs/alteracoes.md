@@ -30,8 +30,31 @@ Este é o roteiro único para testar tudo o que foi alterado. **Cada nova entrad
 ### Pré-requisitos
 
 - Máquina Debian com Docker e k3s (`make init` e `make start-cluster`), na raiz do repositório, com `kubectl` funcionando.
-- Dar permissão de execução aos scripts: `chmod +x scripts/*.sh`. Eles estão versionados **sem** essa permissão; sem isso, `./scripts/test_*.sh` e o `make test-all` (que chama os scripts com `./`) falham com "Permission denied". Alternativa: rodar com `bash scripts/nome.sh`.
+- Dar permissão de execução aos scripts: `chmod +x scripts/*.sh`. Motivo e detalhes em [Problema conhecido: scripts sem permissão de execução](#problema-conhecido-scripts-sem-permissão-de-execução).
 - Tempo estimado: 15 a 20 minutos no total.
+
+### Problema conhecido: scripts sem permissão de execução
+
+**O que acontece.** Todos os arquivos de `scripts/` estão versionados no Git com o modo `100644` (leitura e escrita, **sem** permissão de execução). Quem clona o repositório recebe os scripts assim.
+
+**Sintoma.** Ao rodar um script com `./`, o shell responde `Permission denied`:
+```bash
+./scripts/test_consumer_rebalance.sh
+# bash: ./scripts/test_consumer_rebalance.sh: Permission denied
+```
+No `make test-all` o efeito é parcial e mais difícil de notar: o alvo executa `chmod +x scripts/test_interactive.sh` (só esse arquivo), então o script interativo abre normalmente, mas as fases de rebalanço e de failover, que chamam `./scripts/test_consumer_rebalance.sh` e `./scripts/test_broker_failover.sh`, falham com `Permission denied`. Nessas fases nenhum log é gerado em `logs/`.
+
+**Causa.** O modo dos arquivos foi gravado no Git como `100644`. O `chmod` que o Makefile faz só cobre o `install_deps.sh` (no `make init`) e o `test_interactive.sh` (no `make test-all`). O problema já existia antes das correções deste registro; não foi introduzido por elas.
+
+**Como confirmar.** `git ls-files -s scripts` mostra `100644` para todos os arquivos, e `ls -l scripts/` mostra `-rw-r--r--`.
+
+**Contorno atual (é o que o roteiro usa).** Antes de rodar os testes, na raiz do repositório:
+```bash
+chmod +x scripts/*.sh
+```
+Alternativa sem alterar permissões: executar com `bash scripts/nome.sh` (o `test_interactive.sh`, porém, continuaria chamando os demais com `./`, então para ele o `chmod` é necessário). O `chmod` local não é versionado: cada clone precisa repeti-lo.
+
+**Situação.** **Não corrigido, por decisão do grupo.** A correção definitiva seria gravar a permissão no Git (`git update-index --chmod=+x scripts/*.sh`), o que dispensaria o `chmod` manual em novos clones. Enquanto isso não for feito, o contorno acima é obrigatório e deve constar no relatório como limitação conhecida.
 
 ### Passo 0: subir o ambiente
 

@@ -17,7 +17,7 @@ O comando `make build`:
 
 ### 2. Implantação Automática (`make deploy`)
 O `make deploy` atua como um orquestrador mestre, chamando internamente dois outros targets:
-- **`make deploy-kafka`**: Aplica primeiro os serviços vitais de infraestrutura de mensageria (Zookeeper -> Service Headless -> StatefulSet Kafka -> Job de inicialização de tópicos).
+- **`make deploy-kafka`**: Aplica primeiro os serviços vitais de infraestrutura de mensageria (ConfigMap com o script KRaft -> Services -> StatefulSet Kafka -> Job de inicialização de tópicos).
 - **`make deploy-apps`**: Em seguida, injeta as configurações (`ConfigMaps`), sobe as persistências de dados (`postgres.yaml` e `redis.yaml`) e finaliza com os microserviços (Controlador, Produtor e Consumidor).
 
 *Nota: Em sistemas distribuídos, a ordem de *apply* dos YAMLs nem sempre dita a ordem de inicialização devido à natureza assíncrona do Kubernetes, mas submetê-los de maneira organizada facilita o troubleshooting.*

@@ -64,7 +64,7 @@ smart-factory-kafka/
 │       └── processor.py              # Anomaly detection & partition logging
 └── k8s/
     ├── kafka/
-    │   ├── zookeeper.yaml            # (Omit if using Kafka in KRaft mode)
+    │   ├── kafka-scripts.yaml        # ConfigMap com o setup-kraft.sh (Kafka em modo KRaft, sem Zookeeper)
     │   ├── kafka-statefulset.yaml    # 2+ replicas, persistent volumes
     │   ├── kafka-service.yaml        # Headless + internal broker services
     │   └── kafka-init-job.yaml       # Job to create topic 'dados-sensores'

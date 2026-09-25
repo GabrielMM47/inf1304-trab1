@@ -15,7 +15,7 @@ Para testar a resiliência do nosso `StatefulSet`:
 2. Execute `./scripts/test_broker_failover.sh`.
 3. **O que acontece?** O script manda um comando de deleção forçada (simulando um desligamento na tomada) no pod `kafka-0`.
 4. **Resiliência esperada:** 
-   - O tráfego de dados gerado pelos Sensores **não cai**, pois o Zookeeper elege o broker `kafka-1` sobrevivente como líder momentâneo das partições.
+   - O tráfego de dados gerado pelos Sensores **não cai**, pois o controller KRaft elege o broker `kafka-1` sobrevivente como líder momentâneo das partições.
    - O Kubernetes recria o `kafka-0` mantendo a identidade intacta e conectando o disco persistente (`PVC`) novamente, fazendo com que ele recupere suas mensagens não processadas e retorne ao pool como se nada houvesse acontecido.
 
 ## 2. Tolerância a Falhas no Consumo

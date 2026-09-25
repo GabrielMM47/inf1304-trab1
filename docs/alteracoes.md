@@ -21,6 +21,29 @@ Ordem combinada de execução: 7, depois 8 (parcial), depois a parte de salvamen
 
 ---
 
+## Pontos a verificar
+
+Observações feitas na revisão que ainda **não foram confirmadas** com execução real. Cada ponto deve ser verificado nos testes e, se confirmado, refletido na documentação e no relatório. Ao concluir um ponto, registre o resultado abaixo dele.
+
+### 1. Chave da mensagem, partições e elasticidade
+
+**Contexto.** O sensor usa o identificador da máquina como chave da mensagem (`sensor.py`), então todas as leituras de uma máquina vão para a mesma partição. Dentro do grupo `sensor-group`, cada partição é lida por um único consumidor por vez. O script `test_elasticity.sh` escala `producer-maquina-1` para mais réplicas, e todas usam o mesmo `MAQUINA_ID`, ou seja, a mesma chave.
+
+**O que pode acontecer (hipóteses).**
+- Na Fase 1 (escala dos produtores), o `LAG` cresce **concentrado em uma partição**, a da chave `maquina-1`, e não distribuído.
+- Na Fase 2 (escala dos consumidores), o `LAG` dessa partição **não diminui** com consumidores extras, porque ela continua sendo lida por um só consumidor. Com 3 partições, consumidores além do terceiro ficam ociosos.
+- Com só 3 chaves (`maquina-1`, `-2`, `-3`) e 3 partições, o hash pode colocar duas máquinas na mesma partição e deixar outra sem tráfego.
+
+**Como verificar.** Em `logs/elasticidade_*.log`, comparar o `LAG` **por partição** (não só o total) entre as amostras das duas fases: em qual partição ele cresce, qual `CONSUMER-ID` a lê e se o total cai na Fase 2. Conferir também se alguma partição fica sem mensagens novas.
+
+**Se confirmado.**
+- Registrar no relatório (seção de resultados) que o efeito vem da chave por máquina, e não de falha do Kafka.
+- Alternativas para uma demonstração de elasticidade mais fiel a "mais sensores": escalar máquinas com identificadores diferentes (novos Deployments com outro `MAQUINA_ID`), ou deixar de usar a chave (perde a ordem por máquina; o histórico de alertas já fica no Redis compartilhado, então a lógica de alertas continua funcionando).
+
+**Documentação a revisar depois da verificação.**
+- `docs/fase4.md`, seção 3: afirma que o Kafka "espalhará as requisições de leitura sobre esses 4 *workers*" e que as filas não travam. Isso não vale integralmente com 3 partições e uma única chave em carga.
+- `docs/relatorio/main.typ` (branch `relatorio`): seções "Sensores (produtores)" (uso da chave) e "Elasticidade".
+
 ## Roteiro de validação no cluster
 
 Este é o roteiro único para testar tudo o que foi alterado. **Cada nova entrada do registro deve acrescentar seus passos aqui.** Legenda: ✅ resultado esperado; ⚠️ o que indica problema. Marque as caixas e preencha a tabela de resultados ao final ao executar.

@@ -24,6 +24,11 @@ spec:
         env:
         - name: MAQUINA_ID
           value: "maquina-1"
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
         - name: GENERATION_INTERVAL
           value: "2.0" # Comportamento padrão
 ---
@@ -53,6 +58,11 @@ spec:
         env:
         - name: MAQUINA_ID
           value: "maquina-2"
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
         - name: GENERATION_INTERVAL
           value: "0.5" # Produz 4x mais rápido
         - name: MULTIPLICADOR_TEMPERATURA
@@ -87,6 +97,11 @@ spec:
         env:
         - name: MAQUINA_ID
           value: "maquina-3"
+        - name: PG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
         - name: GENERATION_INTERVAL
           value: "5.0" # Bem mais lenta
         - name: MULTIPLICADOR_TEMPERATURA

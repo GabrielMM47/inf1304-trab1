@@ -5,7 +5,6 @@ metadata:
 data:
   POSTGRES_DB: "fabrica"
   POSTGRES_USER: "postgres"
-  POSTGRES_PASSWORD: "postgres"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -23,7 +22,6 @@ data:
   PG_PORT: "5432"
   PG_DB: "fabrica"
   PG_USER: "postgres"
-  PG_PASSWORD: "postgres"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -43,7 +41,6 @@ data:
   PG_PORT: "5432"
   PG_DB: "fabrica"
   PG_USER: "postgres"
-  PG_PASSWORD: "postgres"
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
 ---
@@ -60,4 +57,3 @@ data:
   PG_PORT: "5432"
   PG_DB: "fabrica"
   PG_USER: "postgres"
-  PG_PASSWORD: "postgres"

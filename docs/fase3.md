@@ -17,8 +17,8 @@ O comando `make build`:
 
 ### 2. Implantação Automática (`make deploy`)
 O `make deploy` atua como um orquestrador mestre, chamando internamente dois outros targets:
-- **`make deploy-kafka`**: Aplica primeiro os serviços vitais de infraestrutura de mensageria (ConfigMap com o script KRaft -> Services -> StatefulSet Kafka -> Job de inicialização de tópicos).
-- **`make deploy-apps`**: Em seguida, injeta as configurações (`ConfigMaps`), sobe as persistências de dados (`postgres.yaml` e `redis.yaml`) e finaliza com os microserviços (Controlador, Produtor e Consumidor).
+- **`make deploy-kafka`**: Aplica primeiro os serviços vitais de infraestrutura de mensageria (ConfigMaps `kafka-config` e `kafka-scripts` -> Services -> StatefulSet Kafka -> Job de inicialização de tópicos).
+- **`make deploy-apps`**: Em seguida (depois de rodar `make secrets`, que cria o Secret com a senha do Postgres se ele ainda não existir), injeta as configurações (`ConfigMaps`), sobe as persistências de dados (`postgres.yaml` e `redis.yaml`) e finaliza com os microserviços (Controlador, Produtor e Consumidor).
 
 *Nota: Em sistemas distribuídos, a ordem de *apply* dos YAMLs nem sempre dita a ordem de inicialização devido à natureza assíncrona do Kubernetes, mas submetê-los de maneira organizada facilita o troubleshooting.*
 
@@ -26,6 +26,10 @@ O `make deploy` atua como um orquestrador mestre, chamando internamente dois out
 Evita a digitação manual de comandos extensos no Kubectl:
 - **`make status`**: Mostra uma visão geral consolidada do cluster, listando Pods, Services e StatefulSets.
 - **`make logs-consumer` / `make logs-producer` / `make logs-controlador`**: Faz o *tailing* (`-f`) direto nos logs daquela categoria inteira de aplicação baseada em *labels*, permitindo debugar os microsserviços de forma unificada.
+
+### 3.1. Senha do banco (`make secrets`, `make db-password`)
+- **`make secrets`**: Cria o Secret `postgres-credentials` com uma senha aleatória **somente se ele não existir**. Roda sozinho dentro de `make deploy-apps`.
+- **`make db-password`**: Imprime a senha atual, lida do Secret (exige acesso ao cluster). Útil para clientes SQL externos; o Adminer e o `make db-shell` não precisam dela.
 
 ### 4. *Teardown* Rápido (`make clean`)
 Deleta de uma só vez absolutamente todos os artefatos (incluindo discos de volume persistente, serviços e pods) das pastas `k8s/apps/` e `k8s/kafka/`, limpando o cluster e reciclando completamente o ambiente para um estado zerado.

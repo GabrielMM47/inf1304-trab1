@@ -14,7 +14,7 @@ Para acessá-lo:
    make db-ui
    ```
 2. Abra o seu navegador e acesse: [http://localhost:8080](http://localhost:8080)
-   *(Você será conectado instantaneamente na base de dados `fabrica`, sem precisar digitar sistema, usuário ou senha!)*
+   *(Você será conectado instantaneamente na base de dados `fabrica`, sem precisar digitar sistema, usuário ou senha! O Adminer lê a senha do Secret `postgres-credentials`. Se precisar dela para outro cliente, use `make db-password`.)*
 
 A partir da interface, você pode clicar em **"Comando SQL"** para executar as *queries* abaixo, ou simplesmente clicar em **"Selecionar"** nas tabelas `leituras_sensores` e `event_table` para ver as métricas entrando em tempo real.
 

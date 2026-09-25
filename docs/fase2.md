@@ -20,6 +20,7 @@ Sem o `StatefulSet`, após uma falha simulada ou real, os seus brokers Kafka vol
 
 O Kafka é o coração do barramento de eventos.
 
+- **`kafka-config.yaml`**: `ConfigMap` com o `KAFKA_CLUSTER_ID`, o identificador do cluster KRaft. É um UUID de 22 caracteres que todos os brokers precisam compartilhar; ele é gravado no `meta.properties` do disco de cada broker e o broker recusa subir se o valor configurado divergir do gravado. Por isso é uma constante única e estável, lida pelo script de inicialização a partir da variável de ambiente (em vez de estar escrita dentro do script). Só deve ser trocado ao recriar o cluster do zero.
 - **`kafka-scripts.yaml`**: Um `ConfigMap` com o script `setup-kraft.sh`, executado na inicialização de cada broker. O Kafka roda em **modo KRaft** (sem Zookeeper): cada pod atua como `broker` e `controller` ao mesmo tempo, e os próprios controllers formam um quórum que gerencia os metadados do cluster e a eleição de líderes de partição. O script deriva o `node.id` do nome do pod (`kafka-0` → `0`), monta o arquivo de configuração e formata o armazenamento antes de iniciar o broker.
 - **`kafka-statefulset.yaml`**: Sobem-se múltiplas instâncias (`replicas: 2`) usando `StatefulSet`. Isso garante que as identidades dos brokers sejam persistentes (ex: `kafka-0` e `kafka-1`), o que é essencial para estabilidade do barramento.
 - **`kafka-service.yaml`**: Um `Service Headless` (`clusterIP: None`) foi configurado para permitir a comunicação e resolução de DNS direta entre as réplicas do broker e os clientes produtores/consumidores.
@@ -32,7 +33,8 @@ O Kafka é o coração do barramento de eventos.
 
 ## 4. As Aplicações (`k8s/apps/`)
 
-- **`configmap.yaml`**: Centraliza todas as variáveis de ambiente necessárias para evitar *hard-coding* (hosts, portas, tópicos, limiares de alertas).
+- **`configmap.yaml`**: Centraliza as variáveis de ambiente **não sensíveis** para evitar *hard-coding* (hosts, portas, tópicos, limiares de alertas). A senha do banco **não** está aqui.
+- **Secret `postgres-credentials`** (não é um arquivo do repositório): guarda a senha do PostgreSQL. É criado pelo `make secrets` (chamado automaticamente por `make deploy-apps`) com uma senha aleatória gerada na primeira execução; se já existir, é mantido. O Postgres o consome como `POSTGRES_PASSWORD`, e produtor, consumidor, controlador e Adminer via `secretKeyRef`. Como o manifesto com a senha nunca vai para o Git, ela não fica exposta no repositório. Para ver a senha: `make db-password`.
 - **`producer-deployment.yaml`**: Implanta duas "máquinas" virtuais distintas (`maquina-1` e `maquina-2`). Usa deployments independentes com env vars específicas para provar a escalabilidade e paralelismo da injeção de dados.
 - **`consumer-deployment.yaml`**: Instancia os processadores de anomalia, com `replicas: 2`. O Kafka distribui automaticamente a carga (as partições dos tópicos) entre elas devido à inscrição no mesmo `KAFKA_GROUP_ID`.
 - **`controlador-deployment.yaml`**: Contém tanto o `Deployment` do microsserviço Controlador quanto a configuração de segurança **RBAC**. É criada uma `ServiceAccount`, uma `Role` que permite deletar `pods`, e um `RoleBinding` atrelando-a ao pod, conferindo a ele permissões de _In-Cluster Authentication_.

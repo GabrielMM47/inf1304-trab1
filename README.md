@@ -25,6 +25,7 @@ Se você está em um ambiente limpo (ex: Debian) e quer testar a arquitetura int
    make status
    make logs-consumer
    ```
+   *(O `make all` também cria, na primeira vez, o Secret com a senha aleatória do Postgres. Para consultá-la: `make db-password`.)*
 5. *(Opcional)* **Acessar o banco de dados via interface visual:**
    ```bash
    make db-ui
@@ -64,6 +65,7 @@ smart-factory-kafka/
 │       └── processor.py              # Anomaly detection & partition logging
 └── k8s/
     ├── kafka/
+    │   ├── kafka-config.yaml         # ConfigMap com o KAFKA_CLUSTER_ID
     │   ├── kafka-scripts.yaml        # ConfigMap com o setup-kraft.sh (Kafka em modo KRaft, sem Zookeeper)
     │   ├── kafka-statefulset.yaml    # 2+ replicas, persistent volumes
     │   ├── kafka-service.yaml        # Headless + internal broker services

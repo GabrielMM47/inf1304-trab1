@@ -30,9 +30,10 @@ data:
     transaction.state.log.min.isr=${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR:-1}
     EOF
     
-    # 3. Formata o disco para o KRaft com um UUID de cluster fixo
-    echo "Formatando logs KRaft..."
-    kafka-storage format --ignore-formatted -t "MkU3OEVBNTcwNTJENDM2Qk" -c /tmp/kraft.properties
+    # 3. Formata o disco para o KRaft com o UUID do cluster (vem do ConfigMap kafka-config)
+    : "${KAFKA_CLUSTER_ID:?KAFKA_CLUSTER_ID não definido (ver k8s/kafka/kafka-config.yaml)}"
+    echo "Formatando logs KRaft (cluster ID: $KAFKA_CLUSTER_ID)..."
+    kafka-storage format --ignore-formatted -t "$KAFKA_CLUSTER_ID" -c /tmp/kraft.properties
     
     # 4. Substitui o processo atual (exec) pelo broker do Kafka
     echo "Iniciando o Kafka Broker..."

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-config
+data:
+  # Identificador do cluster KRaft (22 caracteres, base64url). Todos os brokers
+  # precisam usar o MESMO valor. Para gerar outro: kafka-storage random-uuid.
+  # Trocar exige recriar o cluster do zero (o ID fica gravado nos dados de cada broker).
+  KAFKA_CLUSTER_ID: "zrH_urXmRdCh86VyykE9Vg"

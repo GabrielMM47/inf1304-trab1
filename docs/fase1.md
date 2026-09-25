@@ -44,7 +44,8 @@ Os microsserviços não apenas escrevem `prints` no console, mas garantem rastre
 Todo o projeto segue a abordagem de não *hard-codar* as lógicas. Utilizamos as seguintes variáveis principais (além dos limites e multiplicadores):
 - `KAFKA_BROKER`, `KAFKA_TOPIC`, `KAFKA_TOPIC_COMANDOS`
 - `KAFKA_GROUP_ID` (Garante paralelismo no particionamento do tópico para múltiplos consumidores)
-- `PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER`, `PG_PASSWORD` (Para armazenamento centralizado)
+- `PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER` (Para armazenamento centralizado; ficam no ConfigMap)
+- `PG_PASSWORD` (Senha do banco; **não** fica no ConfigMap: vem do Secret `postgres-credentials` via `secretKeyRef`, ver [Fase 2](fase2.md))
 
 As três aplicações (sensor, processor e controlador) são empacotadas através de `Dockerfile` utilizando imagens reduzidas (`python:3.9-slim`).
 

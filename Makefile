@@ -1,4 +1,4 @@
-.PHONY: all init start-cluster build deploy deploy-kafka deploy-apps clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-consumers db-reset kafka-lag test-all
+.PHONY: all init start-cluster build deploy deploy-kafka secrets deploy-apps db-password clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-consumers db-reset kafka-lag test-all
 
 # Imagens Docker
 PRODUCER_IMG := smart-factory-producer:latest
@@ -26,12 +26,27 @@ build:
 
 deploy-kafka:
 	@echo "Subindo cluster Kafka em modo KRaft (Sem Zookeeper!)..."
+	kubectl apply -f k8s/kafka/kafka-config.yaml
 	kubectl apply -f k8s/kafka/kafka-scripts.yaml
 	kubectl apply -f k8s/kafka/kafka-service.yaml
 	kubectl apply -f k8s/kafka/kafka-statefulset.yaml
 	kubectl apply -f k8s/kafka/kafka-init-job.yaml
 
-deploy-apps:
+# Cria o Secret do Postgres com uma senha aleatória, só se ele ainda não existir.
+# Não recriar a cada execução: o Postgres só lê a senha quando cria o volume pela primeira vez.
+secrets:
+	@if kubectl get secret postgres-credentials >/dev/null 2>&1; then \
+		echo "Secret postgres-credentials já existe (mantido)."; \
+	else \
+		echo "Gerando senha aleatória do PostgreSQL e criando o Secret postgres-credentials..."; \
+		kubectl create secret generic postgres-credentials \
+			--from-literal=POSTGRES_PASSWORD="$$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)"; \
+	fi
+
+db-password:
+	@kubectl get secret postgres-credentials -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d; echo
+
+deploy-apps: secrets
 	@echo "Subindo Bancos de Dados e Aplicações..."
 	kubectl apply -f k8s/apps/configmap.yaml
 	kubectl apply -f k8s/apps/postgres.yaml

@@ -21,7 +21,7 @@ def obter_configuracao():
         "pg_port": os.environ.get("PG_PORT", "5432"),
         "pg_db": os.environ.get("PG_DB", "fabrica"),
         "pg_user": os.environ.get("PG_USER", "postgres"),
-        "pg_password": os.environ.get("PG_PASSWORD", "postgres")
+        "pg_password": os.environ.get("PG_PASSWORD", "")
     }
 
 def init_postgres(config):

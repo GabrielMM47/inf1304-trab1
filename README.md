@@ -40,7 +40,7 @@ Se você está em um ambiente limpo (ex: Debian) e quer testar a arquitetura int
 | ------------- | --------- |
 | Eduardo Eugênio de Souza | 2310822 |
 | Gabriel Augusto Gedey | 2210508 |
-| Gabriel Martins Mendes | 231XXXX |
+| Gabriel Martins Mendes | 2311271 |
 
 ## Estrutura de pastas
 ```

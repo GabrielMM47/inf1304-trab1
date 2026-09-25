@@ -152,3 +152,7 @@ Sem cluster, foi verificado: sintaxe dos YAMLs (PyYAML), `bash -n` do script KRa
 **Limitação.** O `test_interactive.sh` chama os scripts de rebalanço e de failover (que agora geram log), mas sua fase de elasticidade usa `make scale-*` e não gera log. Para essa evidência, rode `./scripts/test_elasticity.sh`.
 
 **Como validar.** Sem cluster, foi verificado: `bash -n` em todos os scripts e a execução dos três com um `kubectl` simulado (arquivos criados, seções corretas, escolha do broker sobrevivente, registro do erro de um comando que falha e número de amostras). **Ainda falta testar no k3s:** rodar cada script e conferir o conteúdo real em `logs/`, principalmente a coluna `CONSUMER-ID` e a saída do `kafka-topics --describe`.
+
+### Correção no README: matrícula de Gabriel Martins Mendes (2026-09-25)
+
+A tabela de integrantes do `README.md` tinha o marcador `231XXXX` no lugar da matrícula de Gabriel Martins Mendes. Foi substituído por `2311271`. Alteração de uma linha, sem impacto em código ou manifestos.

@@ -21,6 +21,140 @@ Ordem combinada de execução: 7, depois 8 (parcial), depois a parte de salvamen
 
 ---
 
+## Roteiro de validação no cluster
+
+Este é o roteiro único para testar tudo o que foi alterado. **Cada nova entrada do registro deve acrescentar seus passos aqui.** Legenda: ✅ resultado esperado; ⚠️ o que indica problema. Marque as caixas e preencha a tabela de resultados ao final ao executar.
+
+> Até o momento, **nada disto foi executado em um cluster real**: as alterações foram verificadas apenas localmente (sintaxe, compilação e simulação com `kubectl` falso). Os passos abaixo são a validação que falta.
+
+### Pré-requisitos
+
+- Máquina Debian com Docker e k3s (`make init` e `make start-cluster`), na raiz do repositório, com `kubectl` funcionando.
+- Dar permissão de execução aos scripts: `chmod +x scripts/*.sh`. Eles estão versionados **sem** essa permissão; sem isso, `./scripts/test_*.sh` e o `make test-all` (que chama os scripts com `./`) falham com "Permission denied". Alternativa: rodar com `bash scripts/nome.sh`.
+- Tempo estimado: 15 a 20 minutos no total.
+
+### Passo 0: subir o ambiente
+
+```bash
+make all          # build das imagens + deploy (Kafka e aplicações)
+make status       # repita até estabilizar (1 a 2 minutos)
+```
+- [ ] ✅ Pods `Running`: `kafka-0`, `kafka-1`, `postgres-0`, `redis`, `adminer`, 2 `controlador`, 3 `producer-*`, 2 `consumer`. O pod do Job `kafka-init-topics` fica `Completed`.
+- ⚠️ `CreateContainerConfigError` indica Secret ausente (rode `make secrets`); `CrashLoopBackOff` em `kafka-*`, veja `kubectl logs kafka-0`.
+
+### Passo 1: tempo de processamento configurável (item 8, `sleep`)
+
+```bash
+kubectl exec deploy/consumer -- env | grep TEMPO_PROCESSAMENTO
+```
+- [ ] ✅ `TEMPO_PROCESSAMENTO_MIN_SEG=0.5` e `TEMPO_PROCESSAMENTO_MAX_SEG=1.5`.
+
+Teste de comportamento: em `k8s/apps/configmap.yaml`, mude ambos para `"3.0"` no `consumer-config`, e rode:
+```bash
+kubectl apply -f k8s/apps/configmap.yaml && kubectl rollout restart deployment consumer
+kubectl logs -l app=consumer --timestamps --tail=10
+```
+- [ ] ✅ As linhas "Leitura recebida..." de um mesmo consumidor passam a ter cerca de 3 s entre si. Depois **volte os valores para 0.5 e 1.5**, aplique e reinicie de novo.
+
+### Passo 2: senha do Postgres em Secret (item 8)
+
+```bash
+kubectl get secret postgres-credentials
+make db-password
+kubectl get configmap postgres-config producer-config consumer-config controlador-config -o yaml | grep -i password
+make secrets
+make db-password
+```
+- [ ] ✅ O Secret existe; `db-password` imprime uma senha de 24 caracteres; o `grep` não retorna nada (nenhuma senha nos ConfigMaps de configuração; o `adminer-autologin` não entra na lista porque só contém o código PHP, que lê a senha do ambiente); o segundo `make secrets` imprime "já existe (mantido)" e a senha impressa em seguida é **a mesma**.
+
+As aplicações conseguem conectar no banco com a senha do Secret:
+```bash
+kubectl logs -l app=consumer | grep -i postgresql
+kubectl logs -l app=producer | grep -i aviso
+kubectl logs -l app=controlador | grep -i aviso
+```
+- [ ] ✅ O consumidor mostra "Conectado ao PostgreSQL com sucesso"; produtores e controlador **não** mostram "Aviso: Não foi possível conectar ao PostgreSQL". ⚠️ Se mostrarem, a senha do Secret não bate com a do banco (ver "Cuidados" na entrada do Secret).
+
+Dados chegando e acesso ao banco:
+```bash
+make db-shell     # dentro do psql: SELECT count(*) FROM leituras_sensores;  (repita após ~10 s)
+make db-ui        # abrir http://localhost:8080
+```
+- [ ] ✅ A contagem é maior que zero e **cresce**. O Adminer abre já conectado no banco `fabrica`, sem pedir senha.
+
+### Passo 3: UUID do cluster Kafka (item 8)
+
+```bash
+kubectl logs kafka-0 | head -20
+kubectl logs kafka-1 | head -20
+kubectl exec kafka-0 -- cat /tmp/kraft-logs/meta.properties
+kubectl exec kafka-1 -- cat /tmp/kraft-logs/meta.properties
+kubectl exec kafka-0 -- kafka-topics --bootstrap-server localhost:9092 --list
+```
+- [ ] ✅ Os logs de ambos mostram `Formatando logs KRaft (cluster ID: zrH_urXmRdCh86VyykE9Vg)`; os dois `meta.properties` têm o **mesmo** `cluster.id=zrH_urXmRdCh86VyykE9Vg`; a listagem mostra `dados-sensores` e `comandos-fabrica`. ⚠️ `KAFKA_CLUSTER_ID não definido` indica que o `kafka-config.yaml` não foi aplicado antes do StatefulSet.
+
+### Passo 4: o que o `make clean` mantém (correção de documentação)
+
+```bash
+make clean
+kubectl get pvc
+kubectl get secret postgres-credentials
+```
+- [ ] ✅ O PVC `pg-data-postgres-0` **ainda existe** e o Secret **ainda existe**.
+```bash
+make db-reset
+kubectl get pvc
+make all
+```
+- [ ] ✅ Depois do `db-reset` o PVC some; após o novo `make all` e alguns segundos, `SELECT count(*) FROM leituras_sensores;` recomeça com valor baixo (banco zerado) e as aplicações conectam normalmente (mesmo Secret).
+
+### Passo 5: scripts de teste salvando logs (item 6)
+
+Pré-condição: passo 0 concluído e `chmod +x scripts/*.sh` feito. Os arquivos aparecem em `logs/`.
+
+**5a. Rebalanço de consumidor** (cerca de 1 minuto):
+```bash
+./scripts/test_consumer_rebalance.sh
+ls logs/
+```
+- [ ] ✅ Cria `logs/rebalanco_consumidor_<data>_<hora>.log` com 5 seções (ANTES, últimas linhas do pod derrubado, FALHA, DEPOIS, logs dos consumidores). No ANTES, a tabela do grupo mostra as 3 partições distribuídas entre **2** `CONSUMER-ID` diferentes. No DEPOIS, nenhuma partição fica com `CONSUMER-ID` `-`, e as do pod derrubado passaram para outro consumidor.
+
+**5b. Elasticidade** (cerca de 2 a 3 minutos):
+```bash
+./scripts/test_elasticity.sh
+```
+- [ ] ✅ Cria `logs/elasticidade_*.log` com 12 amostras (6 por fase). Na Fase 1 o `LAG` tende a **subir**; na Fase 2, a **cair**. Se o LAG não crescer, aumente o tempo de processamento (passo 1) para deixar o efeito visível. Ao final, volte ao estado original: `kubectl scale deployment producer-maquina-1 --replicas=1 && kubectl scale deployment consumer --replicas=2`.
+
+**5c. Failover de broker** (cerca de 1 minuto):
+```bash
+./scripts/test_broker_failover.sh
+```
+- [ ] ✅ Cria `logs/failover_broker_*.log`. **Resultado esperado hoje, com os itens 1 e 2 ainda pendentes** (replicação 1 e quórum de 2 nós): partições sem líder, comandos que terminam com código 1 ou 124, ou contagem de leituras parada. Isso **documenta o problema**, não é erro do script. Depois de corrigir os itens 1 e 2, o esperado passa a ser `Leader` diferente de `-1` em todas as partições e contagem de leituras crescendo entre ANTES e DEPOIS.
+
+**5d. Script interativo:**
+```bash
+make test-all
+```
+- [ ] ✅ As fases de rebalanço e de failover geram novos arquivos em `logs/`. A fase de elasticidade dele **não** gera log (usa `make scale-*`).
+
+### Registro de resultados
+
+Preencha ao executar (data, quem testou, resultado e observações).
+
+| Passo | Data | Quem | Resultado (OK / falhou) | Observações |
+|-------|------|------|-------------------------|-------------|
+| 0 Subir ambiente | | | | |
+| 1 Tempo de processamento | | | | |
+| 2 Secret do Postgres | | | | |
+| 3 UUID do cluster | | | | |
+| 4 `make clean` / `db-reset` | | | | |
+| 5a Rebalanço | | | | |
+| 5b Elasticidade | | | | |
+| 5c Failover de broker | | | | |
+| 5d `make test-all` | | | | |
+
+---
+
 ## Entradas
 
 ### Item 7: Documentação sem Zookeeper (2026-09-25)
@@ -36,7 +170,7 @@ Ordem combinada de execução: 7, depois 8 (parcial), depois a parte de salvamen
 | `docs/fase3.md` | A ordem do `make deploy-kafka` foi corrigida para refletir o Makefile: ConfigMap com o script KRaft → Services → StatefulSet Kafka → Job de tópicos. |
 | `docs/fase4.md` | "o Zookeeper elege o broker sobrevivente" passou a "o controller KRaft elege o broker sobrevivente". |
 
-**Como validar.** `grep -rni zookeeper .` deve retornar apenas a linha do Makefile (`"Subindo cluster Kafka em modo KRaft (Sem Zookeeper!)..."`), que já estava correta.
+**Como validar.** Só texto, sem teste em cluster: `git grep -in zookeeper -- . ':!docs/alteracoes.md'` deve retornar 3 linhas (`Makefile`, `README.md` e `docs/fase2.md`), todas dizendo **"sem Zookeeper"**. A afirmação do `fase4.md` sobre o controller KRaft eleger o novo líder é comportamento e só é testada no passo 5c do [Roteiro de validação](#roteiro-de-validação-no-cluster).
 
 **Pontos que ficaram para outros itens.**
 - `docs/fase2.md` e `docs/fase4.md` ainda afirmam que o Kafka usa disco persistente (PVC). O StatefulSet do Kafka não tem `volumeClaimTemplates`; isso é tratado no item 3.
@@ -56,9 +190,9 @@ Ordem combinada de execução: 7, depois 8 (parcial), depois a parte de salvamen
 
 **Comportamento.** Sem mudança com os valores atuais (0,5 a 1,5 s). Para alterar, edite o ConfigMap e reinicie os consumidores (`kubectl apply -f k8s/apps/configmap.yaml && kubectl rollout restart deployment consumer`); não é preciso rebuild.
 
-**Como validar.** `python3 -m py_compile src/consumer/processor.py` e, no cluster, `kubectl exec deploy/consumer -- env | grep TEMPO_PROCESSAMENTO`.
+**Como validar.** Ver o passo 1 do [Roteiro de validação](#roteiro-de-validação-no-cluster).
 
-**Pendente no item 8.** Perfis de limites e faixas de valores do sensor (ainda no código), UUID do cluster Kafka, credenciais do Postgres (ConfigMap vs Secret) e docstrings faltantes. Cada um será registrado aqui quando for tratado.
+**Pendente no item 8 (na época desta entrada).** UUID do cluster e senha do Postgres foram tratados na entrada seguinte. Continuam pendentes: perfis de limites e faixas de valores do sensor (ainda no código) e docstrings faltantes.
 
 ### Item 8 (parcial): Senha do Postgres em Secret e UUID do cluster Kafka em ConfigMap (2026-09-25)
 
@@ -113,12 +247,7 @@ Duas correções do mesmo tema (valores que estavam fixos no código ou em Confi
 
 #### Como validar (A e B)
 
-Sem cluster, foi verificado: sintaxe dos YAMLs (PyYAML), `bash -n` do script KRaft, `py_compile` dos três serviços e o comportamento do alvo `secrets` com um `kubectl` simulado (1ª execução cria com 24 caracteres; 2ª mantém; `db-password` retorna a mesma senha). **Ainda falta testar no k3s**:
-1. `make all` e depois `make status`: todos os pods `Running` (sem `CreateContainerConfigError`, que indicaria Secret ausente).
-2. `kubectl logs kafka-0 | head`: deve mostrar `Formatando logs KRaft (cluster ID: zrH_urXmRdCh86VyykE9Vg)`.
-3. `kubectl logs -l app=consumer`: deve mostrar "Conectado ao PostgreSQL com sucesso".
-4. `make db-ui` e abrir `http://localhost:8080`: deve entrar sem senha.
-5. `make secrets` uma segunda vez: deve imprimir "já existe (mantido)".
+Sem cluster, foi verificado: sintaxe dos YAMLs (PyYAML), `bash -n` do script KRaft, `py_compile` dos três serviços e o comportamento do alvo `secrets` com um `kubectl` simulado (1ª execução cria com 24 caracteres; 2ª mantém; `db-password` retorna a mesma senha). **Ainda falta testar no k3s:** passos 2 (Secret) e 3 (UUID) do [Roteiro de validação](#roteiro-de-validação-no-cluster).
 
 ### Correção de documentação: o que o `make clean` realmente apaga (2026-09-25)
 
@@ -128,7 +257,7 @@ Sem cluster, foi verificado: sintaxe dos YAMLs (PyYAML), `bash -n` do script KRa
 
 **Por que importa.** Depois de um `make clean` e de um novo `make all`, os dados do Postgres e a senha continuam os mesmos. Quem esperava um ambiente zerado (por exemplo, para um teste de demonstração) veria dados antigos na tabela `leituras_sensores`.
 
-**Como validar (no cluster).** Depois de `make clean`, `kubectl get pvc` deve ainda listar `pg-data-postgres-0` e `kubectl get secret postgres-credentials` deve ainda existir. Depois de `make db-reset`, o PVC deve sumir.
+**Como validar (no cluster).** Passo 4 do [Roteiro de validação](#roteiro-de-validação-no-cluster).
 
 ### Item 6 (parte logs): scripts de teste passam a salvar evidências em `logs/` (2026-09-25)
 
@@ -151,8 +280,8 @@ Sem cluster, foi verificado: sintaxe dos YAMLs (PyYAML), `bash -n` do script KRa
 
 **Limitação.** O `test_interactive.sh` chama os scripts de rebalanço e de failover (que agora geram log), mas sua fase de elasticidade usa `make scale-*` e não gera log. Para essa evidência, rode `./scripts/test_elasticity.sh`.
 
-**Como validar.** Sem cluster, foi verificado: `bash -n` em todos os scripts e a execução dos três com um `kubectl` simulado (arquivos criados, seções corretas, escolha do broker sobrevivente, registro do erro de um comando que falha e número de amostras). **Ainda falta testar no k3s:** rodar cada script e conferir o conteúdo real em `logs/`, principalmente a coluna `CONSUMER-ID` e a saída do `kafka-topics --describe`.
+**Como validar.** Sem cluster, foi verificado: `bash -n` em todos os scripts e a execução dos três com um `kubectl` simulado (arquivos criados, seções corretas, escolha do broker sobrevivente, registro do erro de um comando que falha e número de amostras). **Ainda falta testar no k3s:** passo 5 do [Roteiro de validação](#roteiro-de-validação-no-cluster), principalmente a coluna `CONSUMER-ID` e a saída do `kafka-topics --describe`.
 
 ### Correção no README: matrícula de Gabriel Martins Mendes (2026-09-25)
 
-A tabela de integrantes do `README.md` tinha o marcador `231XXXX` no lugar da matrícula de Gabriel Martins Mendes. Foi substituído por `2311271`. Alteração de uma linha, sem impacto em código ou manifestos.
+A tabela de integrantes do `README.md` tinha o marcador `231XXXX` no lugar da matrícula de Gabriel Martins Mendes. Foi substituído por `2311271`. Alteração de uma linha, sem impacto em código ou manifestos. Validação (só texto): `grep -n 2311271 README.md` deve retornar uma linha, na tabela de integrantes.

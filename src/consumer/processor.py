@@ -65,6 +65,8 @@ def obter_configuracao():
         "group_id": os.environ.get("KAFKA_GROUP_ID", "sensor-group"),
         "janela_analise": float(os.environ.get("JANELA_ANALISE_SEG", "60.0")),
         "max_alertas": int(os.environ.get("MAX_ALERTAS_JANELA", "5")),
+        "tempo_processamento_min": float(os.environ.get("TEMPO_PROCESSAMENTO_MIN_SEG", "0.5")),
+        "tempo_processamento_max": float(os.environ.get("TEMPO_PROCESSAMENTO_MAX_SEG", "1.5")),
         "pg_host": os.environ.get("PG_HOST", ""),
         "pg_port": os.environ.get("PG_PORT", "5432"),
         "pg_db": os.environ.get("PG_DB", "fabrica"),
@@ -191,12 +193,13 @@ def processar_mensagem(dados_mensagem, config, produtor, pg_conn):
     
     Argumentos:
         dados_mensagem (dict): O conteúdo (payload) com os dados do sensor.
-        config (dict): As configurações que contêm limites e janela de análise.
+        config (dict): As configurações que contêm limites, janela de análise
+            e o intervalo de tempo simulado de processamento.
     """
-    # Simula um processamento analítico pesado (ex: IA/Machine Learning para anomalias)
-    # Isso faz o pod demorar ~1s por requisição. Fundamental para gerar enfileiramento (backlog)
-    # e provar que o escalonamento elástico de Consumidores resolve o gargalo.
-    time.sleep(random.uniform(0.5, 1.5))
+    # Simula um processamento analítico pesado (ex: IA/Machine Learning para anomalias).
+    # A duração sorteada entre TEMPO_PROCESSAMENTO_MIN_SEG e TEMPO_PROCESSAMENTO_MAX_SEG
+    # gera enfileiramento (backlog) e permite provar que escalar Consumidores resolve o gargalo.
+    time.sleep(random.uniform(config["tempo_processamento_min"], config["tempo_processamento_max"]))
 
     limites = config["limites"]
     maquina_id = dados_mensagem.get("maquina_id", "desconhecida")

@@ -20,6 +20,7 @@ O consumidor recebe as mensagens no tópico configurado (`KAFKA_TOPIC`) e avalia
 
 - **Perfis de Limite:** Permite definir limites de operação através da variável `PERFIL_LIMITES` (opções: `strict`, `normal`, `loose`).
 - **Sobrescrita Individual:** Limites específicos também podem ser controlados (ex: `LIMITE_TEMPERATURA`, `LIMITE_ENERGIA`).
+- **Tempo de Processamento Simulado:** Para simular um processamento analítico pesado (e assim gerar fila/lag no Kafka), cada mensagem espera um tempo sorteado entre `TEMPO_PROCESSAMENTO_MIN_SEG` e `TEMPO_PROCESSAMENTO_MAX_SEG` (padrão: 0,5 a 1,5 s). Quanto maior o tempo, mais fácil de observar o efeito de escalar os consumidores.
 - **Tolerância a Falhas e Janela de Alertas:** O consumidor não se baseia em um alerta simples para condenar uma máquina. Ele usa um histórico compartilhado:
   - Verifica o volume de falhas em uma janela de tempo (`JANELA_ANALISE_SEG`).
   - Se a máquina estourar o limite de alertas consecutivos (`MAX_ALERTAS_JANELA`), ele envia um comando `KILL` para o tópico de controle (`comandos-fabrica`).

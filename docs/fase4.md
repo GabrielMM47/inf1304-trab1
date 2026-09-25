@@ -47,3 +47,25 @@ O que ele faz:
   Sobe o processador de anomalias para 4 réplicas. O Kafka automaticamente espalhará as requisições de leitura sobre esses 4 *workers*, garantindo que as filas de mensagens não travem (lag) e as detecções de falhas de máquinas não sofram atraso.
 
 Você pode acompanhar essa elasticidade monitorando a interface do Adminer (descrita na Fase 3) ou usando o comando `make status` para enxergar as réplicas recém-criadas no cluster.
+
+## 4. Evidências (logs salvos)
+
+Os três scripts de teste (`test_broker_failover.sh`, `test_consumer_rebalance.sh` e `test_elasticity.sh`) salvam automaticamente a saída em arquivos dentro da pasta `logs/`, com data e hora no nome (ex: `logs/rebalanco_consumidor_20260925_193338.log`). Cada arquivo é dividido em seções (`ANTES`, `FALHA`, `DEPOIS`) e mostra, para cada comando executado, a linha `$ comando` seguida da saída. Um comando que falha ou estoura o tempo limite é **registrado no log**, sem interromper o teste: isso também é resultado do experimento.
+
+| Script | Arquivo gerado | O que fica registrado |
+|--------|----------------|-----------------------|
+| `test_consumer_rebalance.sh` | `logs/rebalanco_consumidor_*.log` | Consumidores e atribuição de partições (`kafka-consumer-groups --describe`) antes e depois; últimas linhas de log do pod derrubado; logs dos consumidores sobreviventes |
+| `test_broker_failover.sh` | `logs/failover_broker_*.log` | Líder, réplicas e ISR de cada partição (`kafka-topics --describe`), LAG do grupo e total de leituras no Postgres, antes e depois; logs dos consumidores na janela da falha |
+| `test_elasticity.sh` | `logs/elasticidade_*.log` | Fase 1 (escala os produtores) e Fase 2 (escala os consumidores), cada uma com amostras periódicas do LAG e das partições |
+
+**Como interpretar.**
+- *Rebalanço:* compare a coluna `CONSUMER-ID` do ANTES com a do DEPOIS. As partições do consumidor derrubado devem aparecer com outro consumidor, e nenhuma pode ficar com `-`.
+- *Failover de broker:* no DEPOIS, toda partição deve ter líder (`Leader` diferente de `-1`) e o total de leituras no banco deve continuar crescendo. Os logs dos produtores não servem de prova, porque o envio do `kafka-python` é assíncrono e imprime "Enviado" mesmo quando a entrega falha.
+- *Elasticidade:* na Fase 1 a coluna `LAG` deve subir; na Fase 2 deve cair.
+
+**Configuração.** Tudo é ajustável por variável de ambiente, sem editar os scripts (ex: `ESPERA_REBALANCE_SEG=40 ./scripts/test_consumer_rebalance.sh`). As variáveis de cada script estão descritas no comentário do seu cabeçalho; as comuns (pasta de logs, tópico, grupo, timeout) estão em `scripts/lib_logs.sh`.
+
+**Uso pelo `test_interactive.sh`.** As fases de rebalanço e de failover do script interativo chamam os scripts individuais e, portanto, também geram logs. A fase de elasticidade do interativo usa `make scale-producers` e `make scale-consumers` e **não** gera log; para uma evidência de elasticidade, rode `./scripts/test_elasticity.sh`.
+
+**Versionamento.** A pasta `logs/` não está no `.gitignore`. Os logs que forem usados no relatório devem ser versionados (o enunciado pede os "logs de execução mostrando rebalanço" como entregável); use `git add` apenas nos arquivos desejados.
+

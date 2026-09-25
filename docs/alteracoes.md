@@ -13,7 +13,7 @@ A revisão do repositório contra o enunciado gerou uma lista de itens. Os núme
 | 3 | Kafka sem volume persistente (`log.dirs=/tmp`, sem `volumeClaimTemplates`) | A avaliar se se aplica |
 | 4 | Teste de falha de broker (script apenas deleta o pod, não verifica nem salva evidência) | Pendente |
 | 5 | Log de rebalanço no consumidor (`ConsumerRebalanceListener`, partição em cada leitura) | Pendente |
-| 6 | Logs salvos pelos scripts de teste e relatório final (`docs/report.md`) | Pendente |
+| 6 | Logs salvos pelos scripts de teste e relatório final (`docs/report.md`) | Em andamento: scripts salvam logs (feito); relatório pendente |
 | 7 | Documentação citando Zookeeper, removido do projeto (Kafka roda em KRaft) | **Concluído** |
 | 8 | Constantes hard-coded e docstrings faltantes (itens pontuados no enunciado) | Em andamento (escopo parcial): tempo de processamento, UUID do cluster e senha do Postgres feitos; faltam perfis de limites/faixas do sensor e docstrings |
 
@@ -129,3 +129,26 @@ Sem cluster, foi verificado: sintaxe dos YAMLs (PyYAML), `bash -n` do script KRa
 **Por que importa.** Depois de um `make clean` e de um novo `make all`, os dados do Postgres e a senha continuam os mesmos. Quem esperava um ambiente zerado (por exemplo, para um teste de demonstração) veria dados antigos na tabela `leituras_sensores`.
 
 **Como validar (no cluster).** Depois de `make clean`, `kubectl get pvc` deve ainda listar `pg-data-postgres-0` e `kubectl get secret postgres-credentials` deve ainda existir. Depois de `make db-reset`, o PVC deve sumir.
+
+### Item 6 (parte logs): scripts de teste passam a salvar evidências em `logs/` (2026-09-25)
+
+**Problema.** Os scripts `test_broker_failover.sh`, `test_consumer_rebalance.sh` e `test_elasticity.sh` apenas executavam a falha e imprimiam "o que observar". Nada era salvo, mas o enunciado exige como entregáveis os "logs de execução mostrando rebalanço" e a demonstração de elasticidade, e o relatório precisa de evidências.
+
+**O que foi feito.**
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `scripts/lib_logs.sh` (novo) | Funções compartilhadas, carregadas com `source`: `log_init` (cria `logs/<teste>_<data>_<hora>.log`), `log_msg`, `log_section`, `log_cmd` (executa um comando mostrando-o e gravando a saída; registra o código de saída e usa `timeout` para não travar se o Kafka cair) e helpers `kafka_describe_group`, `kafka_describe_topic`, `db_contagem_leituras`, `kafka_pod_vivo`. Pasta de logs, tópico, grupo, timeouts e usuário/banco do Postgres vêm de variáveis de ambiente (com padrões), sem valores fixos no código. |
+| `scripts/test_consumer_rebalance.sh` | Continua deletando um consumidor, mas salva ANTES (pods e partições por consumidor), o final do log do pod derrubado, a FALHA e o DEPOIS (após `ESPERA_REBALANCE_SEG`, padrão 20 s) com os logs dos sobreviventes. |
+| `scripts/test_broker_failover.sh` | Continua deletando à força um broker, mas salva ANTES/DEPOIS de: líder, réplicas e ISR das partições, LAG do grupo, total de leituras no banco e logs dos consumidores. Os comandos do DEPOIS rodam no broker **sobrevivente** (`kafka_pod_vivo` exclui o pod derrubado). |
+| `scripts/test_elasticity.sh` | Antes escalava produtores e consumidores ao mesmo tempo. Agora são duas fases (produtores, depois consumidores), cada uma com amostras periódicas do LAG (`AMOSTRAS`, `INTERVALO_AMOSTRA_SEG`). Réplicas e nomes dos deployments vêm de variáveis, com os mesmos padrões de antes (3 e 4). |
+| `docs/fase4.md` | Nova seção "Evidências (logs salvos)": o que cada script grava, como interpretar e variáveis. |
+
+**Decisões que afetam a interpretação.**
+- Os logs dos **produtores não são usados como prova de que o sistema continuou funcionando**: o `kafka-python` envia de forma assíncrona e imprime "Enviado" mesmo se a entrega falhar. A prova é o total de leituras no Postgres, o LAG e o líder/ISR das partições.
+- Os scripts **não escondem falhas**: se o Kafka estiver indisponível durante o teste, o comando correspondente aparece no log com seu código de saída (124 = estourou o timeout). Isso é intencional: com os problemas atuais dos itens 1 e 2 (replicação 1 e quórum de 2 nós), o teste de broker deve mostrar partições sem líder, e esse resultado documenta o problema.
+- `logs/` **não** está no `.gitignore`: os logs usados no relatório devem ser versionados.
+
+**Limitação.** O `test_interactive.sh` chama os scripts de rebalanço e de failover (que agora geram log), mas sua fase de elasticidade usa `make scale-*` e não gera log. Para essa evidência, rode `./scripts/test_elasticity.sh`.
+
+**Como validar.** Sem cluster, foi verificado: `bash -n` em todos os scripts e a execução dos três com um `kubectl` simulado (arquivos criados, seções corretas, escolha do broker sobrevivente, registro do erro de um comando que falha e número de amostras). **Ainda falta testar no k3s:** rodar cada script e conferir o conteúdo real em `logs/`, principalmente a coluna `CONSUMER-ID` e a saída do `kafka-topics --describe`.

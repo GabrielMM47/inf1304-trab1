@@ -119,3 +119,13 @@ Sem cluster, foi verificado: sintaxe dos YAMLs (PyYAML), `bash -n` do script KRa
 3. `kubectl logs -l app=consumer`: deve mostrar "Conectado ao PostgreSQL com sucesso".
 4. `make db-ui` e abrir `http://localhost:8080`: deve entrar sem senha.
 5. `make secrets` uma segunda vez: deve imprimir "já existe (mantido)".
+
+### Correção de documentação: o que o `make clean` realmente apaga (2026-09-25)
+
+**Problema.** O `docs/fase3.md` afirmava que o `make clean` deleta "absolutamente todos os artefatos (incluindo discos de volume persistente...)". Isso não é verdade: o `clean` roda `kubectl delete -f k8s/apps/` e `kubectl delete -f k8s/kafka/`, que removem só os recursos declarados nesses arquivos. Por padrão, o Kubernetes **mantém** os PVCs criados por `volumeClaimTemplates` quando o StatefulSet é deletado, e o Secret `postgres-credentials` não está em nenhum manifesto (é criado pelo `make secrets`).
+
+**O que foi feito.** Somente texto, em `docs/fase3.md` (seção "Teardown Rápido"): passou a listar o que o `clean` apaga, o que ele **não** apaga (PVC do Postgres e Secret) e como recomeçar do zero (`make db-reset` e apagar o Secret juntos). Nenhum código ou manifesto foi alterado.
+
+**Por que importa.** Depois de um `make clean` e de um novo `make all`, os dados do Postgres e a senha continuam os mesmos. Quem esperava um ambiente zerado (por exemplo, para um teste de demonstração) veria dados antigos na tabela `leituras_sensores`.
+
+**Como validar (no cluster).** Depois de `make clean`, `kubectl get pvc` deve ainda listar `pg-data-postgres-0` e `kubectl get secret postgres-credentials` deve ainda existir. Depois de `make db-reset`, o PVC deve sumir.

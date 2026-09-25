@@ -32,4 +32,10 @@ Evita a digitação manual de comandos extensos no Kubectl:
 - **`make db-password`**: Imprime a senha atual, lida do Secret (exige acesso ao cluster). Útil para clientes SQL externos; o Adminer e o `make db-shell` não precisam dela.
 
 ### 4. *Teardown* Rápido (`make clean`)
-Deleta de uma só vez absolutamente todos os artefatos (incluindo discos de volume persistente, serviços e pods) das pastas `k8s/apps/` e `k8s/kafka/`, limpando o cluster e reciclando completamente o ambiente para um estado zerado.
+Deleta de uma só vez os recursos declarados nas pastas `k8s/apps/` e `k8s/kafka/` (Deployments, StatefulSets, Services, ConfigMaps, Job e RBAC) e encerra os túneis do `kubectl port-forward`.
+
+O que o `make clean` **não** apaga:
+- **O volume do PostgreSQL (PVC `pg-data-postgres-0`).** Por padrão, o Kubernetes mantém os PVCs criados por `volumeClaimTemplates` quando o StatefulSet é deletado. Por isso os dados do banco sobrevivem a um `make clean` seguido de `make all`. Para zerar o banco, use `make db-reset`.
+- **O Secret `postgres-credentials`,** porque ele é criado pelo `make secrets` e não faz parte dos manifestos apagados. Ele fica consistente com o volume mantido. Se quiser recomeçar com uma senha nova, apague o Secret **junto** com o volume (`kubectl delete secret postgres-credentials` e `make db-reset`); apagar só um dos dois deixa a senha do Secret diferente da do banco.
+
+O Kafka não tem volume persistente (ver item 3 em [alteracoes.md](alteracoes.md)), então seus dados são perdidos ao recriar os pods.

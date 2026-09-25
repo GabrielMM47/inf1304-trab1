@@ -1,0 +1,11 @@
+kafka_docs:
+  type: Web
+  title: "Apache Kafka Documentation"
+  author: Apache Software Foundation
+  url: { value: "https://kafka.apache.org/documentation/", date: 2026-09-25 }
+
+kubernetes_docs:
+  type: Web
+  title: "Kubernetes Documentation"
+  author: The Kubernetes Authors
+  url: { value: "https://kubernetes.io/docs/", date: 2026-09-25 }

@@ -28,6 +28,19 @@ spec:
         app: producer
         sensor-id: maquina-$i
     spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: confluentinc/cp-kafka:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Waiting for Kafka topic 'dados-sensores' to be created..."
+          while ! kafka-topics --bootstrap-server kafka:9092 --list 2>/dev/null | grep -q "dados-sensores"; do
+            sleep 2
+            echo "Waiting..."
+          done
+          echo "Kafka is ready and topics are created!"
       containers:
       - name: producer
         image: smart-factory-producer:latest
@@ -44,10 +57,22 @@ spec:
               name: postgres-credentials
               key: POSTGRES_PASSWORD
         - name: GENERATION_INTERVAL
-          value: "10.0"
+          value: "1.0"
 EOF
     else
         echo "Máquina $i já existe."
+    fi
+done
+
+# Limpa as máquinas excedentes
+echo "Verificando se há máquinas excedentes para remover..."
+CURRENT_DEPLOYMENTS=$(kubectl get deployments -l app=producer -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
+for dep in $CURRENT_DEPLOYMENTS; do
+    # Extrai o número do nome (ex: producer-maquina-4 -> 4)
+    ID=$(echo "$dep" | grep -oE '[0-9]+$')
+    if [ -n "$ID" ] && [ "$ID" -gt "$MACHINES" ]; then
+        echo "Removendo máquina excedente: $dep..."
+        kubectl delete deployment "$dep"
     fi
 done
 

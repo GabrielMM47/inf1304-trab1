@@ -331,7 +331,8 @@ def main():
         enable_auto_commit=False,
         session_timeout_ms=10000,   # Se ficar 10s sem dar sinal de vida, expulsa do grupo
         heartbeat_interval_ms=3000, # Envia sinal de vida a cada 3s
-        max_poll_interval_ms=60000
+        max_poll_interval_ms=60000,
+        max_poll_records=10
     )
     
     produtor_comandos = KafkaProducer(

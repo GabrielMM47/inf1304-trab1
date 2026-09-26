@@ -45,7 +45,7 @@ spec:
               name: postgres-credentials
               key: POSTGRES_PASSWORD
         - name: GENERATION_INTERVAL
-          value: "10.0" # Comportamento padrão
+          value: "1.0" # Comportamento padrão
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -94,7 +94,7 @@ spec:
               name: postgres-credentials
               key: POSTGRES_PASSWORD
         - name: GENERATION_INTERVAL
-          value: "5.0" # Produz 2x mais rápido
+          value: "0.5" # Produz 2x mais rápido
         - name: MULTIPLICADOR_TEMPERATURA
           value: "0.5" # Máquina mais fria
         - name: MULTIPLICADOR_VIBRACAO
@@ -148,7 +148,7 @@ spec:
               name: postgres-credentials
               key: POSTGRES_PASSWORD
         - name: GENERATION_INTERVAL
-          value: "25.0" # Bem mais lenta
+          value: "2.5" # Bem mais lenta
         - name: MULTIPLICADOR_TEMPERATURA
           value: "3.0" # Super quente, gera anomalias!
         - name: MULTIPLICADOR_ENERGIA

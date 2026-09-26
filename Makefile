@@ -70,6 +70,7 @@ clean:
 	@echo "Removendo todos os recursos do Kubernetes..."
 	kubectl delete -f k8s/apps/ || true
 	kubectl delete $$(kubectl get deployments -o name | grep producer) || true
+	kubectl delete $$(kubectl get deployments -o name | grep consumer-extra) || true
 	kubectl delete -f k8s/kafka/ || true
 	@echo "Encerrando túneis de rede ativos..."
 	pkill -f "[k]ubectl port-forward" || true
@@ -108,7 +109,7 @@ db-ui:
 	@echo "O Auto-Login está ativado. Você será conectado automaticamente na base fabrica!"
 	kubectl port-forward svc/adminer 8080:8080 --address 0.0.0.0
 
-MACHINES ?= 5
+MACHINES ?= 8
 scale-producers:
 	@echo "Criando novas máquinas (deployments) se não existirem (Total desejado: $(MACHINES))..."
 	@./scripts/scale_producers.sh $(MACHINES)
@@ -119,10 +120,10 @@ scale-machine:
 	@echo "Escalando a máquina-$(MAQUINA) para $(P_REPLICAS) instâncias simultâneas..."
 	kubectl scale deployment producer-maquina-$(MAQUINA) --replicas=$(P_REPLICAS)
 
-C_REPLICAS ?= 10
+C_REPLICAS ?= 12
 scale-consumers:
-	@echo "Escalando o grupo de consumidores para $(C_REPLICAS) réplicas para acelerar o processamento..."
-	kubectl scale deployment consumer --replicas=$(C_REPLICAS)
+	@echo "Escalando o grupo de consumidores extras para $(C_REPLICAS) instâncias rápidas para acelerar o processamento..."
+	@./scripts/scale_consumers.sh $(C_REPLICAS)
 
 test-all:
 	@./scripts/test_interactive.sh

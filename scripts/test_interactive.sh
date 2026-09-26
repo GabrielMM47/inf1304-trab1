@@ -70,7 +70,6 @@ done
 print_header "Fase 2: Resiliência de Processamento (Consumer Rebalance)" "Iremos abater um consumidor. O Kafka reorganizará as tarefas entre os sobreviventes."
 log_cmd ./scripts/test_consumer_rebalance.sh
 log_msg "Entrando no painel dinâmico. Monitorando o rebalanceamento por 20 segundos..."
-wait_for_rebalance
 
 for i in 1 2 3 4 5; do
     clear

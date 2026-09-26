@@ -14,7 +14,7 @@ data:
   DEBUG_MODE: "0"
   KAFKA_BROKER: "kafka:9092"
   KAFKA_TOPIC: "dados-sensores"
-  GENERATION_INTERVAL: "2.0"
+  GENERATION_INTERVAL: "1.0"
   MULTIPLICADOR_TEMPERATURA: "1.0"
   MULTIPLICADOR_VIBRACAO: "1.5"
   MULTIPLICADOR_ENERGIA: "2.0"
@@ -34,10 +34,10 @@ data:
   KAFKA_TOPIC: "dados-sensores"
   KAFKA_TOPIC_COMANDOS: "comandos-fabrica"
   KAFKA_GROUP_ID: "sensor-group"
-  JANELA_ANALISE_SEG: "30.0"
+  JANELA_ANALISE_SEG: "7.0"
   MAX_ALERTAS_JANELA: "5"
-  TEMPO_PROCESSAMENTO_MIN_SEG: "0.4"
-  TEMPO_PROCESSAMENTO_MAX_SEG: "0.8"
+  TEMPO_PROCESSAMENTO_MIN_SEG: "0.2"
+  TEMPO_PROCESSAMENTO_MAX_SEG: "0.5"
   PERFIL_LIMITES: "normal"
   PG_HOST: "postgres"
   PG_PORT: "5432"
@@ -60,3 +60,25 @@ data:
   PG_PORT: "5432"
   PG_DB: "fabrica"
   PG_USER: "postgres"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: consumer-extra-config
+data:
+  DEBUG_MODE: "0"
+  KAFKA_BROKER: "kafka:9092"
+  KAFKA_TOPIC: "dados-sensores"
+  KAFKA_TOPIC_COMANDOS: "comandos-fabrica"
+  KAFKA_GROUP_ID: "sensor-group"
+  JANELA_ANALISE_SEG: "7.0"
+  MAX_ALERTAS_JANELA: "5"
+  TEMPO_PROCESSAMENTO_MIN_SEG: "0.1" # Fast processing for extra consumers
+  TEMPO_PROCESSAMENTO_MAX_SEG: "0.2"
+  PERFIL_LIMITES: "normal"
+  PG_HOST: "postgres"
+  PG_PORT: "5432"
+  PG_DB: "fabrica"
+  PG_USER: "postgres"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"

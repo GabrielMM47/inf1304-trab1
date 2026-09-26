@@ -19,6 +19,24 @@ function print_header() {
     echo "----------------------------------------------------------"
 }
 
+function wait_for_rebalance() {
+    echo -e "\e[1;36mAguardando o Kafka estabilizar (Rebalanceamento)... Isso pode levar alguns segundos.\e[0m"
+    KAFKA_POD=$(kubectl get pods -l app=kafka -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' | awk '{print $1}')
+    
+    while true; do
+        STATE_OUTPUT=$(kubectl exec -t $KAFKA_POD -- kafka-consumer-groups --bootstrap-server kafka-0.kafka-headless:9092,kafka-1.kafka-headless:9092,kafka-2.kafka-headless:9092 --describe --group sensor-group --state 2>/dev/null || true)
+        
+        if echo "$STATE_OUTPUT" | grep -q "Stable"; then
+            echo -e "\e[1;32m✓ Cluster Kafka estabilizado! (Status: Stable)\e[0m"
+            break
+        elif echo "$STATE_OUTPUT" | grep -q "Empty"; then
+            echo -e "\e[1;32m✓ Cluster Kafka vazio, mas estável! (Status: Empty)\e[0m"
+            break
+        fi
+        sleep 2
+    done
+}
+
 # FASE 0: Saúde
 print_header "Fase 0: Verificação de Saúde Inicial" "Este é o ponto de partida. Vamos verificar se a infraestrutura está saudável."
 make status
@@ -29,6 +47,7 @@ print_header "Fase 1: Elasticidade sob Carga (Injeção)" "Vamos forçar uma alt
 make scale-producers
 echo ""
 echo "Entrando no painel dinâmico. Monitorando o LAG por 20 segundos..."
+wait_for_rebalance
 
 for i in 1 2 3 4 5; do
     clear
@@ -43,6 +62,7 @@ print_header "Fase 1: Elasticidade sob Carga (Resgate)" "Vamos escalar os consum
 make scale-consumers
 echo ""
 echo "Entrando no painel dinâmico. Monitorando o alívio do LAG por 20 segundos..."
+wait_for_rebalance
 
 for i in 1 2 3 4 5; do
     clear
@@ -57,6 +77,7 @@ done
 print_header "Fase 2: Resiliência de Processamento (Consumer Rebalance)" "Iremos abater um consumidor. O Kafka reorganizará as tarefas entre os sobreviventes."
 ./scripts/test_consumer_rebalance.sh
 echo "Entrando no painel dinâmico. Monitorando o rebalanceamento por 20 segundos..."
+wait_for_rebalance
 
 for i in 1 2 3 4 5; do
     clear
@@ -74,6 +95,7 @@ done
 print_header "Fase 3: Caos na Infraestrutura (Broker Failover)" "Vamos deletar o broker líder do Kafka e observar a auto-recuperação do cluster KRaft."
 ./scripts/test_broker_failover.sh
 echo "Entrando no painel dinâmico. Monitorando o failover por 20 segundos..."
+wait_for_rebalance
 
 for i in 1 2 3 4 5; do
     clear
@@ -104,25 +126,25 @@ while true; do
     echo ""
     case $key in
         1)
-            kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica -c "SELECT timestamp, component_name, event_type, details FROM event_table ORDER BY timestamp DESC LIMIT 20;"
+            kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -x -c "SELECT timestamp, component_name, event_type, details FROM event_table ORDER BY timestamp DESC LIMIT 20;"
             ;;
         2)
-            kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica -c "SELECT timestamp, component_name, details FROM event_table WHERE event_type = 'MACHINE_KILLED' OR event_type = 'CRITICAL_ALERT_KILL_SENT' ORDER BY timestamp DESC;"
+            kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -x -c "SELECT timestamp, component_name, details FROM event_table WHERE event_type = 'MACHINE_KILLED' OR event_type = 'CRITICAL_ALERT_KILL_SENT' ORDER BY timestamp DESC;"
             ;;
         3)
-            kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica -c "SELECT maquina_id, date_trunc('minute', timestamp) AS minuto, AVG(valor) AS temp_media FROM leituras_sensores WHERE tipo_sensor = 'temperatura' GROUP BY maquina_id, minuto ORDER BY minuto DESC;"
+            kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c "SELECT maquina_id, date_trunc('minute', timestamp) AS minuto, AVG(valor) AS temp_media FROM leituras_sensores WHERE tipo_sensor = 'temperatura' GROUP BY maquina_id, minuto ORDER BY minuto DESC;"
             ;;
         4)
-            kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica -c "SELECT tipo_sensor, COUNT(*) as total_alertas FROM leituras_sensores WHERE houve_alerta = true GROUP BY tipo_sensor ORDER BY total_alertas DESC;"
+            kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c "SELECT tipo_sensor, COUNT(*) as total_alertas FROM leituras_sensores WHERE houve_alerta = true GROUP BY tipo_sensor ORDER BY total_alertas DESC;"
             ;;
         5)
-            kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica -c "SELECT maquina_id, tipo_sensor, COUNT(*) as total_alertas FROM leituras_sensores WHERE houve_alerta = true GROUP BY maquina_id, tipo_sensor ORDER BY total_alertas DESC;"
+            kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c "SELECT maquina_id, tipo_sensor, COUNT(*) as total_alertas FROM leituras_sensores WHERE houve_alerta = true GROUP BY maquina_id, tipo_sensor ORDER BY total_alertas DESC;"
             ;;
         6)
-            kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica -c "SELECT maquina_id, tipo_sensor, MAX(valor) AS pico_maximo, MIN(valor) AS minimo, ROUND(AVG(valor), 2) AS media, COUNT(*) FILTER (WHERE houve_alerta = true) AS total_alertas FROM leituras_sensores GROUP BY maquina_id, tipo_sensor ORDER BY maquina_id, tipo_sensor;"
+            kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c "SELECT maquina_id, tipo_sensor, MAX(valor) AS pico_maximo, MIN(valor) AS minimo, ROUND(AVG(valor), 2) AS media, COUNT(*) FILTER (WHERE houve_alerta = true) AS total_alertas FROM leituras_sensores GROUP BY maquina_id, tipo_sensor ORDER BY maquina_id, tipo_sensor;"
             ;;
         7)
-            kubectl exec -it statefulset/postgres -- psql -U postgres -d fabrica -c "SELECT component_name, event_type, COUNT(*) as volume FROM event_table GROUP BY component_name, event_type ORDER BY volume DESC;"
+            kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c "SELECT component_name, event_type, COUNT(*) as volume FROM event_table GROUP BY component_name, event_type ORDER BY volume DESC;"
             ;;
         "")
             break

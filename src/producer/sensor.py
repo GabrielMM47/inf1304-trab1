@@ -143,7 +143,6 @@ def main():
                     }
                     produtor.send(
                         config["topico"], 
-                        key=config["maquina_id"].encode('utf-8'),
                         value=dado
                     )
                     log_event(pg_conn, "PRODUTOR", "SEND_DATA", dado)

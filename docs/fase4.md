@@ -41,10 +41,13 @@ Utilize o script de elasticidade (ou os atalhos do Makefile) para estressar o si
 
 O que ele faz:
 
-- **`make scale-producers`**: 
-  Sobe agressivamente o número de *pods* simulando a `maquina-1` para gerar telemetria simultânea (o tráfego no Kafka se multiplicará).
-- **`make scale-consumers`**: 
-  Sobe o processador de anomalias para 4 réplicas. O Kafka automaticamente espalhará as requisições de leitura sobre esses 4 *workers*, garantindo que as filas de mensagens não travem (lag) e as detecções de falhas de máquinas não sofram atraso.
+- O script escala a `maquina-1` para mais pods (padrão 3) e, em seguida, o Deployment `consumer` para 4 réplicas, coletando amostras do LAG em cada fase.
+
+Atalhos do Makefile para escalar manualmente:
+
+- **`make scale-producers MACHINES=N`**: ajusta o número de máquinas (Deployments `producer-maquina-N`) para N, criando as que faltam e removendo as excedentes (padrão 8).
+- **`make scale-machine MAQUINA=M P_REPLICAS=R`**: coloca R pods simultâneos na máquina M.
+- **`make scale-consumers C_REPLICAS=N`**: ajusta o total de consumidores para N (padrão 12): até 3 no Deployment `consumer` e o restante como Deployments `consumer-extra-N`, que processam mais rápido. Como o tópico tem 12 partições, consumidores além do 12º ficam sem partição.
 
 Você pode acompanhar essa elasticidade monitorando a interface do Adminer (descrita na Fase 3) ou usando o comando `make status` para enxergar as réplicas recém-criadas no cluster.
 
@@ -65,7 +68,7 @@ Os três scripts de teste (`test_broker_failover.sh`, `test_consumer_rebalance.s
 
 **Configuração.** Tudo é ajustável por variável de ambiente, sem editar os scripts (ex: `ESPERA_REBALANCE_SEG=40 ./scripts/test_consumer_rebalance.sh`). As variáveis de cada script estão descritas no comentário do seu cabeçalho; as comuns (pasta de logs, tópico, grupo, timeout) estão em `scripts/lib_logs.sh`.
 
-**Uso pelo `test_interactive.sh`.** As fases de rebalanço e de failover do script interativo chamam os scripts individuais e, portanto, também geram logs. A fase de elasticidade do interativo usa `make scale-producers` e `make scale-consumers` e **não** gera log; para uma evidência de elasticidade, rode `./scripts/test_elasticity.sh`.
+**Uso pelo `test_interactive.sh`.** As fases de rebalanço e de failover do script interativo chamam os scripts individuais e, portanto, também geram logs. Além disso, o próprio roteiro interativo grava toda a sua saída em `logs/interactive_*.log`, incluindo as amostras de LAG da fase de elasticidade (feita com `make scale-producers` e `make scale-consumers`). O `./scripts/test_elasticity.sh` gera um log dedicado, `logs/elasticidade_*.log`.
 
 **Versionamento.** A pasta `logs/` não está no `.gitignore`. Os logs que forem usados no relatório devem ser versionados (o enunciado pede os "logs de execução mostrando rebalanço" como entregável); use `git add` apenas nos arquivos desejados.
 

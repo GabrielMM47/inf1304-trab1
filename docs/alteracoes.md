@@ -8,12 +8,12 @@ A revisão do repositório contra o enunciado gerou uma lista de itens. Os núme
 
 | # | Item | Situação |
 |---|------|----------|
-| 1 | Replicação do tópico `dados-sensores` (era `--replication-factor 1` no Job de criação de tópicos) | **Concluído no código** (fator 3, 6 partições). Falta evidência em log com a configuração nova |
-| 2 | Quórum KRaft: 2 brokers/controllers não toleravam a perda de um nó (o Raft exige maioria) | **Concluído no código** (3 brokers/controllers). Falta evidência em log com a configuração nova |
+| 1 | Replicação do tópico `dados-sensores` (era `--replication-factor 1` no Job de criação de tópicos) | **Concluído** (fator 3, 12 partições). Evidência em `logs/failover_broker_20260926_180852.log` |
+| 2 | Quórum KRaft: 2 brokers/controllers não toleravam a perda de um nó (o Raft exige maioria) | **Concluído** (3 brokers/controllers). Evidência em `logs/failover_broker_20260926_180852.log` |
 | 3 | Kafka sem volume persistente (`log.dirs=/tmp`, sem `volumeClaimTemplates`) | Não aplicado. Com fator de replicação 3, um broker recriado recupera os dados das réplicas dos outros; registrar como limitação no relatório |
-| 4 | Teste de falha de broker (script apenas deletava o pod, sem verificar nem salvar evidência) | Script concluído (ver item 6). **Os logs versionados são anteriores aos itens 1 e 2 e precisam ser refeitos** |
+| 4 | Teste de falha de broker (script apenas deletava o pod, sem verificar nem salvar evidência) | **Concluído.** Executado em 26/09 com a configuração nova; resultado no relatório |
 | 5 | Log de rebalanço no consumidor (`ConsumerRebalanceListener`, partição em cada leitura) | Não implementado. A biblioteca `kafka-python` já registra no log do consumidor as partições revogadas e atribuídas a cada rebalanço (`Revoking previously assigned partitions` / `Setting newly assigned partitions`), o que serve de evidência |
-| 6 | Logs salvos pelos scripts de teste e relatório final | Scripts salvam logs (**concluído**). Relatório em andamento na branch `relatorio`, em Typst (`docs/relatorio/`); faltam resultados e conclusão, que dependem dos testes novos |
+| 6 | Logs salvos pelos scripts de teste e relatório final | Scripts salvam logs (**concluído**). Relatório em Typst (`docs/relatorio/`) com resultados, conclusão e apêndice de logs (**concluído**) |
 | 7 | Documentação citando Zookeeper, removido do projeto (Kafka roda em KRaft) | **Concluído** |
 | 8 | Constantes hard-coded e docstrings faltantes (itens pontuados no enunciado) | Em andamento (escopo parcial): tempo de processamento, UUID do cluster, senha do Postgres e docstrings feitos; faltam perfis de limites e faixas de valores do sensor |
 
@@ -23,32 +23,19 @@ Ordem combinada de execução: 7, depois 8 (parcial), depois a parte de salvamen
 
 ## Pontos a verificar
 
-Observações feitas na revisão que ainda **não foram confirmadas** com execução real. Cada ponto deve ser verificado nos testes e, se confirmado, refletido na documentação e no relatório. Ao concluir um ponto, registre o resultado abaixo dele.
+Observações feitas na revisão que precisavam ser confirmadas com execução real.
 
 ### 1. Chave da mensagem, partições e elasticidade
 
-**Contexto.** O sensor usa o identificador da máquina como chave da mensagem (`sensor.py`), então todas as leituras de uma máquina vão para a mesma partição. Dentro do grupo `sensor-group`, cada partição é lida por um único consumidor por vez. O script `test_elasticity.sh` escala `producer-maquina-1` para mais réplicas, e todas usam o mesmo `MAQUINA_ID`, ou seja, a mesma chave.
+**Situação: resolvido.** A hipótese era que a chave por máquina (`key=maquina_id`) concentraria a carga de `maquina-1` em uma única partição, limitando o efeito de escalar consumidores. O sensor deixou de usar chave (ver a entrada [Itens 1 e 2 e ajustes nos serviços](#itens-1-e-2-e-ajustes-nos-serviços-2026-09-26)), e no ensaio de 26/09 às 18:07 o _lag_ se distribuiu entre as 12 partições (`logs/interactive_20260926_180644.log`).
 
-**O que pode acontecer (hipóteses).**
-- Na Fase 1 (escala dos produtores), o `LAG` cresce **concentrado em uma partição**, a da chave `maquina-1`, e não distribuído.
-- Na Fase 2 (escala dos consumidores), o `LAG` dessa partição **não diminui** com consumidores extras, porque ela continua sendo lida por um só consumidor. Com 3 partições, consumidores além do terceiro ficam ociosos.
-- Com só 3 chaves (`maquina-1`, `-2`, `-3`) e 3 partições, o hash pode colocar duas máquinas na mesma partição e deixar outra sem tráfego.
-
-**Como verificar.** Em `logs/elasticidade_*.log`, comparar o `LAG` **por partição** (não só o total) entre as amostras das duas fases: em qual partição ele cresce, qual `CONSUMER-ID` a lê e se o total cai na Fase 2. Conferir também se alguma partição fica sem mensagens novas.
-
-**Se confirmado.**
-- Registrar no relatório (seção de resultados) que o efeito vem da chave por máquina, e não de falha do Kafka.
-- Alternativas para uma demonstração de elasticidade mais fiel a "mais sensores": escalar máquinas com identificadores diferentes (novos Deployments com outro `MAQUINA_ID`), ou deixar de usar a chave (perde a ordem por máquina; o histórico de alertas já fica no Redis compartilhado, então a lógica de alertas continua funcionando).
-
-**Documentação a revisar depois da verificação.**
-- `docs/fase4.md`, seção 3: afirma que o Kafka "espalhará as requisições de leitura sobre esses 4 *workers*" e que as filas não travam. Isso não vale integralmente com 3 partições e uma única chave em carga.
-- `docs/relatorio/main.typ` (branch `relatorio`): seções "Sensores (produtores)" (uso da chave) e "Elasticidade".
+---
 
 ## Roteiro de validação no cluster
 
 Este é o roteiro único para testar tudo o que foi alterado. **Cada nova entrada do registro deve acrescentar seus passos aqui.** Legenda: ✅ resultado esperado; ⚠️ o que indica problema. Marque as caixas e preencha a tabela de resultados ao final ao executar.
 
-> **Situação em 26/09:** os scripts de teste já foram executados no cluster (logs em `logs/` e `tests_execution.log`), mas **antes** da correção dos itens 1 e 2: esses logs mostram o tópico com `PartitionCount: 1` e `ReplicationFactor: 1`. **Os passos abaixo precisam ser executados de novo com a configuração atual**, e a tabela de resultados ao final ainda não foi preenchida.
+> **Situação em 26/09:** os passos 5a, 5c, 5d e parte do 6 foram cobertos pela execução de 26/09 entre 18:06 e 18:09, com o tópico em 12 partições e fator 3 (logs em `logs/`; resumo na tabela de resultados). Os logs antigos, anteriores à correção dos itens 1 e 2, foram removidos. Os demais passos ainda não têm registro de execução.
 
 ### Pré-requisitos
 
@@ -76,14 +63,14 @@ make status       # repita até estabilizar (1 a 2 minutos)
 ```bash
 kubectl exec deploy/consumer -- env | grep TEMPO_PROCESSAMENTO
 ```
-- [ ] ✅ `TEMPO_PROCESSAMENTO_MIN_SEG=0.4` e `TEMPO_PROCESSAMENTO_MAX_SEG=0.8` (valores atuais do `consumer-config`).
+- [ ] ✅ `TEMPO_PROCESSAMENTO_MIN_SEG=0.2` e `TEMPO_PROCESSAMENTO_MAX_SEG=0.5` (valores atuais do `consumer-config`; os consumidores extras usam 0.1 e 0.2, do `consumer-extra-config`).
 
 Teste de comportamento: em `k8s/apps/configmap.yaml`, mude ambos para `"3.0"` no `consumer-config`, e rode:
 ```bash
 kubectl apply -f k8s/apps/configmap.yaml && kubectl rollout restart deployment consumer
 kubectl logs -l app=consumer --timestamps --tail=10
 ```
-- [ ] ✅ As linhas "Leitura recebida..." de um mesmo consumidor passam a ter cerca de 3 s entre si. Depois **volte os valores para 0.4 e 0.8**, aplique e reinicie de novo.
+- [ ] ✅ As linhas "Leitura recebida..." de um mesmo consumidor passam a ter cerca de 3 s entre si. Depois **volte os valores para 0.2 e 0.5**, aplique e reinicie de novo.
 
 ### Passo 2: senha do Postgres em Secret (item 8)
 
@@ -137,32 +124,32 @@ make all
 
 ### Passo 5: scripts de teste salvando logs (item 6)
 
-Pré-condição: passo 0 e **passo 6** concluídos (o tópico precisa estar com 6 partições e fator 3, senão os logs repetem o problema dos logs antigos). Os arquivos aparecem em `logs/`.
+Pré-condição: passo 0 e **passo 6** concluídos (o tópico precisa estar com 12 partições e fator 3). Os arquivos aparecem em `logs/`.
 
 **5a. Rebalanço de consumidor** (cerca de 1 minuto):
 ```bash
 ./scripts/test_consumer_rebalance.sh
 ls logs/
 ```
-- [ ] ✅ Cria `logs/rebalanco_consumidor_<data>_<hora>.log` com 5 seções (ANTES, últimas linhas do pod derrubado, FALHA, DEPOIS, logs dos consumidores). No ANTES, a tabela do grupo mostra as **6** partições distribuídas entre os **3** `CONSUMER-ID` (duas partições por consumidor). No DEPOIS, nenhuma partição fica com `CONSUMER-ID` `-`, e as do pod derrubado passaram para outro consumidor.
+- [ ] ✅ Cria `logs/rebalanco_consumidor_<data>_<hora>.log` com 5 seções (ANTES, últimas linhas do pod derrubado, FALHA, DEPOIS, logs dos consumidores). No ANTES, a tabela do grupo mostra as **12** partições distribuídas entre os consumidores em execução (com 3 consumidores, quatro partições cada; com 12, uma cada). No DEPOIS, nenhuma partição fica com `CONSUMER-ID` `-`, e as do pod derrubado passaram para outro consumidor. A consulta do DEPOIS é feita 2 s após a remoção (`ESPERA_REBALANCE_SEG`) e costuma ainda mostrar `is rebalancing`; a conclusão do rebalanço aparece nos logs dos consumidores (`Successfully joined group ... Generation N` e `Setting newly assigned partitions`). Para registrar a tabela já estável, rode com `ESPERA_REBALANCE_SEG=20`.
 
 **5b. Elasticidade** (cerca de 2 a 3 minutos):
 ```bash
 ./scripts/test_elasticity.sh
 ```
-- [ ] ✅ Cria `logs/elasticidade_*.log` com 12 amostras (6 por fase). Na Fase 1 o `LAG` tende a **subir**; na Fase 2, a **cair**. Se o LAG não crescer, aumente o tempo de processamento (passo 1) para deixar o efeito visível. Com 4 consumidores e 6 partições, todos recebem partições. Ao final, volte ao estado original: `kubectl scale deployment producer-maquina-1 --replicas=1 && kubectl scale deployment consumer --replicas=3`.
+- [ ] ✅ Cria `logs/elasticidade_*.log` com 12 amostras (6 por fase). Na Fase 1 o `LAG` tende a **subir**; na Fase 2, a **cair**. Se o LAG não crescer, aumente o tempo de processamento (passo 1) para deixar o efeito visível. Com 4 consumidores e 12 partições, todos recebem partições. Ao final, volte ao estado original: `kubectl scale deployment producer-maquina-1 --replicas=1 && kubectl scale deployment consumer --replicas=3`.
 
 **5c. Failover de broker** (cerca de 1 minuto):
 ```bash
 ./scripts/test_broker_failover.sh
 ```
-- [ ] ✅ Cria `logs/failover_broker_*.log`. No ANTES, o `kafka-topics --describe` mostra `PartitionCount: 6` e `ReplicationFactor: 3`, com `Isr` de 3 brokers. No DEPOIS, todas as partições têm `Leader` diferente de `-1` e de `0` (o broker derrubado), o `Isr` foi reduzido para os brokers sobreviventes e a contagem de leituras no banco **cresceu** entre ANTES e DEPOIS. ⚠️ Se o log mostrar `PartitionCount: 1` ou `ReplicationFactor: 1`, o tópico não foi recriado com a configuração nova (ver passo 6).
+- [ ] ✅ Cria `logs/failover_broker_*.log`. No ANTES, o `kafka-topics --describe` mostra `PartitionCount: 12` e `ReplicationFactor: 3`, com `Isr` de 3 brokers. No DEPOIS, todas as partições têm `Leader` diferente de `-1` e de `0` (o broker derrubado), o `Isr` foi reduzido para os brokers sobreviventes e a contagem de leituras no banco **cresceu** entre ANTES e DEPOIS. ⚠️ Se o log mostrar `PartitionCount: 1` ou `ReplicationFactor: 1`, o tópico não foi recriado com a configuração nova (ver passo 6).
 
 **5d. Script interativo:**
 ```bash
 make test-all
 ```
-- [ ] ✅ Cria `logs/interactive_*.log` com toda a execução, e as fases de rebalanço e de failover geram também seus próprios arquivos em `logs/`. Na fase de elasticidade, o roteiro cria novas máquinas (`make scale-producers`, 5 no total) e eleva os consumidores para 10 (`make scale-consumers`); com 6 partições, **4 consumidores ficam sem partição**, o que é esperado. Ao final o roteiro deixa `producer-maquina-1` com 1 réplica e os consumidores com **5** (e não 3, como no manifesto).
+- [ ] ✅ Cria `logs/interactive_*.log` com toda a execução, e as fases de rebalanço e de failover geram também seus próprios arquivos em `logs/`. Na fase de elasticidade, o roteiro ajusta as máquinas para 8 (`make scale-producers`) e os consumidores para 12 (`make scale-consumers`: 3 no Deployment `consumer` e 9 `consumer-extra-N`); com 12 partições, cada consumidor recebe uma. O _lag_ deve subir após a escala dos produtores e cair após a dos consumidores. Ao final, o roteiro volta para 3 máquinas e 3 consumidores (os extras são removidos).
 
 ### Passo 6: partições, replicação e quórum (itens 1 e 2)
 
@@ -172,7 +159,7 @@ kubectl get pods -l app=kafka
 kubectl exec kafka-0 -- kafka-topics --bootstrap-server localhost:9092 --describe --topic dados-sensores
 kubectl exec kafka-0 -- kafka-metadata-quorum --bootstrap-server localhost:9092 describe --status
 ```
-- [ ] ✅ Três pods `kafka-*` em `Running`. O tópico mostra `PartitionCount: 6` e `ReplicationFactor: 3`, e cada partição lista 3 brokers em `Replicas` e em `Isr`, com líderes distribuídos entre os três. O quórum lista 3 votantes (`CurrentVoters` com os ids 0, 1 e 2). ⚠️ `PartitionCount: 1` indica que o tópico foi criado automaticamente antes do Job (ou que o Job não conseguiu recriá-lo): rode `kubectl delete job kafka-init-topics && kubectl apply -f k8s/kafka/kafka-init-job.yaml` e confira de novo.
+- [ ] ✅ Três pods `kafka-*` em `Running`. O tópico mostra `PartitionCount: 12` e `ReplicationFactor: 3`, e cada partição lista 3 brokers em `Replicas` e em `Isr`, com líderes distribuídos entre os três. O quórum lista 3 votantes (`CurrentVoters` com os ids 0, 1 e 2). ⚠️ `PartitionCount: 1` indica que o tópico foi criado automaticamente antes do Job (ou que o Job não conseguiu recriá-lo): rode `kubectl delete job kafka-init-topics && kubectl apply -f k8s/kafka/kafka-init-job.yaml` e confira de novo.
 
 ### Registro de resultados
 
@@ -190,6 +177,13 @@ Preencha ao executar (data, quem testou, resultado e observações).
 | 5b Elasticidade | | | | |
 | 5c Failover de broker | | | | |
 | 5d `make test-all` | | | | |
+
+**Execução de 26/09 (18:06 a 18:09).** Coberta pelos logs `logs/interactive_20260926_180644.log`, `logs/rebalanco_consumidor_20260926_180813.log` e `logs/failover_broker_20260926_180852.log`:
+- **5a (rebalanço):** 12 consumidores (3 + 9 extras), uma partição cada. A partição 1, do pod removido, passou a outro consumidor; nenhuma partição ficou sem consumidor. Geração 9 do grupo concluída cerca de 4 s depois, com o substituto recebendo a partição 4. A tabela do DEPOIS ainda mostrava `is rebalancing`.
+- **5c (failover):** `PartitionCount: 12`, `ReplicationFactor: 3`. Antes: 4 líderes em cada broker, ISR `0,1,2`. Depois de remover `kafka-0`: 12 partições com líder (7 em `kafka-1`, 5 em `kafka-2`), ISR `1,2`; leituras no banco de 56.573 para 56.706 em cerca de 8 s.
+- **5d (interativo):** _lag_ total 8 no início; após 8 máquinas, 20, 84, 145, 222 e 290; após 12 consumidores, 361, 84, 30, 13 e 7.
+- **6 (parcial):** partições e replicação confirmadas pelo `kafka-topics --describe` dos logs acima; o quórum (`kafka-metadata-quorum`) não foi registrado.
+- **5b (`test_elasticity.sh`):** não executado.
 
 ---
 
@@ -334,7 +328,7 @@ A tabela de integrantes do `README.md` tinha o marcador `231XXXX` no lugar da ma
 |---------|-----------|
 | `k8s/kafka/kafka-statefulset.yaml` | 3 réplicas (`kafka-0` a `kafka-2`). Tópicos internos com fator de replicação 3 e mínimo de 2 réplicas em sincronia (`KAFKA_TRANSACTION_STATE_LOG_MIN_ISR`). Criação automática de tópicos desativada (`KAFKA_AUTO_CREATE_TOPICS_ENABLE=false`). |
 | `k8s/kafka/kafka-scripts.yaml` | `controller.quorum.voters` com os 3 nós: com 3 votantes, a maioria é 2, e o quórum tolera a perda de um. |
-| `k8s/kafka/kafka-init-job.yaml` | Os tópicos `dados-sensores` e `comandos-fabrica` são **apagados e recriados** a cada deploy, com 6 partições e fator de replicação 3. Consequência: cada `make deploy` começa com os tópicos vazios. |
+| `k8s/kafka/kafka-init-job.yaml` | Os tópicos `dados-sensores` e `comandos-fabrica` são **apagados e recriados** a cada deploy, com 6 partições e fator de replicação 3 (depois aumentadas para 12). Consequência: cada `make deploy` começa com os tópicos vazios. |
 | `scripts/init_topic.sh` | Script alternativo com `--replication-factor 5`, o que **falharia** com 3 brokers (o fator não pode ser maior que o número de brokers). Não é usado pelo Makefile. |
 
 **Produtores e consumidores.**
@@ -345,23 +339,23 @@ A tabela de integrantes do `README.md` tinha o marcador `231XXXX` no lugar da ma
 | `src/consumer/processor.py` | Confirmação manual da posição de leitura (`enable_auto_commit=False`, `commit()` após cada mensagem). Detecção de falha mais rápida (`session_timeout_ms=10000`, `heartbeat_interval_ms=3000`). Tratamento de `SIGTERM`. Reconexão ao Postgres (`check_and_reconnect_pg`). Erro em uma mensagem não derruba o consumidor. |
 | `k8s/apps/consumer-deployment.yaml` | 3 réplicas e contêiner de inicialização que espera o tópico existir. |
 | `k8s/apps/producer-deployment.yaml` | Contêiner de inicialização que espera o tópico. Novos intervalos base: `maquina-1` 10 s, `maquina-2` 5 s, `maquina-3` 25 s. |
-| `k8s/apps/configmap.yaml` | `DEBUG_MODE` nos três ConfigMaps. Janela de alertas de 30 s. Tempo de processamento de 0,4 a 0,8 s. |
+| `k8s/apps/configmap.yaml` | `DEBUG_MODE` nos três ConfigMaps. Janela de alertas de 30 s. Tempo de processamento de 0,4 a 0,8 s (valores alterados depois; ver a entrada seguinte). |
 
 **Makefile e scripts.**
 
 | Arquivo | Alteração |
 |---------|-----------|
 | `Makefile` | `init` dá `chmod +x` em todos os scripts. `deploy-apps` aceita `DEBUG=1`. `scale-producers MACHINES=N` cria máquinas novas (Deployments) até N (padrão 5), via `scripts/scale_producers.sh`. Novo `scale-machine MAQUINA=M P_REPLICAS=R`. `scale-consumers C_REPLICAS=N` (padrão 10). `clean` também remove as máquinas criadas dinamicamente. `kafka-lag` usa `scripts/inspect_queue.sh`, que consulta qualquer broker em execução. |
-| `scripts/test_interactive.sh` | Grava toda a saída em `logs/interactive_*.log`, espera o grupo de consumo voltar ao estado `Stable` após cada rebalanço e usa os novos alvos de escala. |
+| `scripts/test_interactive.sh` | Grava toda a saída em `logs/interactive_*.log`, espera o grupo de consumo voltar ao estado `Stable` após cada rebalanço (espera removida depois) e usa os novos alvos de escala. |
 | `scripts/*.sh` | Versionados como executáveis (`100755`). |
-| `logs/`, `tests_execution.log` | Logs de execução dos testes. **Atenção:** são de 26/09 por volta de 01:00, **antes** da correção dos tópicos, e mostram `PartitionCount: 1` e `ReplicationFactor: 1`. Não servem como evidência dos itens 1 e 2. |
+| `logs/`, `tests_execution.log` | Logs de execução dos testes de 26/09 por volta de 01:00, **antes** da correção dos tópicos (`PartitionCount: 1`, `ReplicationFactor: 1`). Foram removidos e substituídos pelos logs da execução de 18:06 (ver a entrada seguinte). |
 
-**Pendências e cuidados observados.**
-- **Refazer os testes** com a configuração atual e versionar os logs novos (passos 6 e 5 do roteiro). Ainda não existe nenhum `logs/elasticidade_*.log`.
-- Nos logs antigos, o grupo `sensor-group` entrava em rebalanço a cada poucos segundos (`Group sensor-group is rebalancing`). Verificar nos testes novos se isso ainda acontece com os ajustes de `session_timeout_ms` e `heartbeat_interval_ms`.
+**Pendências e cuidados observados (situação atualizada na entrada [Ajustes para os ensaios finais e resultados no relatório](#ajustes-para-os-ensaios-finais-e-resultados-no-relatório-2026-09-26)).**
+- Refazer os testes com a configuração nova: **feito** em 26/09 às 18:06.
+- Rebalanços repetidos do grupo nos logs antigos: nos logs novos, o grupo passa por rebalanços quando consumidores entram ou saem, e se estabiliza em poucos segundos.
 - O `make deploy-apps` altera o arquivo versionado `k8s/apps/configmap.yaml` com `sed -i` para ligar ou desligar o `DEBUG_MODE`. Depois de um deploy com `DEBUG=1`, o arquivo fica modificado e pode ser commitado por engano; confira `git status` antes de commitar.
-- Comentários enganosos em `k8s/apps/producer-deployment.yaml`: "Máquina mais fria", "Muita vibração!", "Super quente, gera anomalias!" e "Gasta muita energia". Os `MULTIPLICADOR_*` só mudam o **intervalo** de envio de cada tipo de sensor (quanto maior, menos frequente); os valores são sorteados nas mesmas faixas para todas as máquinas (`gerar_dados` em `sensor.py`).
-- `docs/fase2.md` ainda cita `replicas: 2` para o Kafka e para os consumidores.
+- Comentários enganosos em `k8s/apps/producer-deployment.yaml`: **corrigidos**.
+- `docs/fase2.md` citando `replicas: 2`: **corrigido**.
 
 ### Item 8 (parcial): docstrings nas funções que não tinham (2026-09-26)
 
@@ -385,3 +379,50 @@ A tabela de integrantes do `README.md` tinha o marcador `231XXXX` no lugar da ma
       print(f, sum(1 for n in fs if ast.get_docstring(n)), '/', len(fs))"
   ```
 - Como só foram adicionados comentários, não é preciso reconstruir as imagens para validar; na próxima execução do `make build` elas passam a incluir os docstrings.
+
+### Ajustes para os ensaios finais e resultados no relatório (2026-09-26)
+
+**Contexto.** Para a execução final dos testes, a carga e a capacidade do sistema foram ajustadas, os testes foram executados com a configuração nova (12 partições, fator 3) e os resultados foram escritos no relatório.
+
+**Configuração do cluster e dos serviços.**
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `k8s/kafka/kafka-init-job.yaml` | Tópicos `dados-sensores` e `comandos-fabrica` com **12 partições** (antes 6), fator de replicação 3. |
+| `k8s/apps/producer-deployment.yaml`, `k8s/apps/configmap.yaml` | Intervalos base dez vezes menores: `maquina-1` 1 s, `maquina-2` 0,5 s, `maquina-3` 2,5 s e as máquinas criadas por `make scale-producers`, 1 s. O multiplicador de temperatura da `maquina-2` passou de 0,5 para 1. Os comentários dos multiplicadores foram corrigidos para descrever o que eles fazem (mudam a frequência de envio, não os valores). |
+| `k8s/apps/configmap.yaml` | `consumer-config`: janela de alertas de 7 s, 8 alertas para o comando `KILL`, processamento simulado de 0,2 a 0,5 s. Novo `consumer-extra-config`, igual, mas com processamento de 0,1 a 0,2 s. |
+| `src/consumer/processor.py` | No máximo 10 mensagens por leitura (`max_poll_records=10`). |
+| `src/controlador/controlador.py` | Tratamento de `SIGTERM`, como no sensor e no consumidor. |
+
+**Escala.**
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `scripts/scale_consumers.sh` (novo) e `Makefile` | `make scale-consumers C_REPLICAS=N` (padrão 12) ajusta o total de consumidores: até 3 no Deployment `consumer` e o restante como Deployments `consumer-extra-N`, que usam o `consumer-extra-config` (processamento mais rápido). Extras além do necessário são removidos. |
+| `scripts/scale_producers.sh` e `Makefile` | `make scale-producers MACHINES=N` (padrão 8) também remove as máquinas excedentes; as máquinas novas esperam o tópico existir antes de iniciar. |
+| `Makefile` | `make clean` também remove os consumidores extras. |
+
+**Testes.**
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `scripts/test_consumer_rebalance.sh` | Espera padrão após a remoção reduzida de 20 s para **2 s**; os logs dos consumidores coletados são só os dos últimos 3 s. |
+| `scripts/test_broker_failover.sh` | Espera padrão após a falha reduzida de 30 s para **3 s**. |
+| `scripts/test_interactive.sh` | Mostra o _lag_ na fase inicial; removida a espera pelo estado `Stable` do grupo; ao final, volta para 3 máquinas e 3 consumidores; consultas ao banco limitadas a 20 linhas. |
+| `logs/` | Logs antigos (anteriores à correção dos tópicos) e `tests_execution.log` removidos. Novos: `interactive_20260926_180644.log`, `rebalanco_consumidor_20260926_180813.log` e `failover_broker_20260926_180852.log`. |
+| `scripts/init_topic.sh` | Script alternativo (não usado pelo Makefile) corrigido para 12 partições e fator 3; usava fator 5, que falharia com 3 brokers, e o comando `kafka-topics.sh`, que não existe na imagem `confluentinc/cp-kafka` (o nome é `kafka-topics`). |
+
+**Relatório (`docs/relatorio/main.typ`).** Testes, resultados, conclusão e apêndice de logs preenchidos com os dados da execução de 26/09. Os números citados foram conferidos contra os logs; dois valores de _lag_ foram corrigidos (a segunda e a quinta amostras após a escala dos consumidores são 84 e 7). Também foram atualizados: tabela de intervalos dos sensores, parâmetros dos consumidores, consumidores extras, padrões dos comandos de escala e a descrição do roteiro interativo.
+
+**Documentação.** `docs/fase2.md` (3 brokers, 3 consumidores, 12 partições, consumidores extras), `docs/fase4.md` (comandos de escala) e `README.md` (pasta do relatório no lugar de `report.md`; `kustomization.yaml` marcado como não utilizado).
+
+**Cuidados e limitações.**
+- Com as esperas de 2 s e 3 s, os testes de rebalanço e de failover registram o estado **durante** a recuperação. No rebalanço, a tabela do grupo ainda mostra `is rebalancing`; a conclusão aparece nos logs dos consumidores. Para registrar o estado estável, use `ESPERA_REBALANCE_SEG=20` e `ESPERA_FAILOVER_SEG=30`.
+- Na demonstração de elasticidade, os 9 consumidores extras processam mais rápido que os 3 principais. A queda do _lag_ vem dos dois efeitos (mais consumidores e processamento mais rápido), e o ensaio não os separa.
+- O script `test_elasticity.sh` não foi executado; não há `logs/elasticidade_*.log`.
+- O Deployment `consumer` seleciona pods pelo rótulo `app: consumer`, que os consumidores extras também têm. Na prática não há conflito, porque cada ReplicaSet acrescenta ao seletor o rótulo `pod-template-hash`, mas os seletores dos Deployments se sobrepõem.
+
+**Como validar.**
+- Relatório: `typst compile docs/relatorio/main.typ` sem erros; os números dos capítulos de testes e resultados conferem com os três logs citados.
+- `bash -n scripts/init_topic.sh` sem erros.
+- Configuração: passos 0 a 6 do [Roteiro de validação](#roteiro-de-validação-no-cluster).

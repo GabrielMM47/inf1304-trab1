@@ -48,7 +48,7 @@ smart-factory-kafka/
 ├── Makefile                          # Build, deploy, run tests, teardown
 ├── README.md                         # Setup & run instructions (Deliverable)
 ├── docs/
-│   └── report.md                     # Architecture, test outcomes, logs (Deliverable)
+│   └── relatorio/                    # Relatório em Typst (main.typ) com arquitetura, testes e resultados
 ├── scripts/
 │   ├── init_topic.sh                 # Creates topic with partitions & replication
 │   ├── test_broker_failover.sh       # Kills a broker pod and verifies survival
@@ -74,7 +74,7 @@ smart-factory-kafka/
     │   ├── configmap.yaml            # Shared broker endpoints, topic name, thresholds
     │   ├── producer-deployment.yaml  # Replicas simulating factory machines
     │   └── consumer-deployment.yaml  # Scalable pods in the same consumer-group
-    └── kustomization.yaml            # (Optional) Bundles all manifests together
+    └── kustomization.yaml            # (Vazio, não utilizado)
 ```
 
 ## Fases do Projeto

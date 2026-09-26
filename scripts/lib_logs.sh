@@ -22,17 +22,18 @@ log_init() {
     mkdir -p "$LOG_DIR"
     LOG_FILE="$LOG_DIR/${1}_$(date +%Y%m%d_%H%M%S).log"
     : > "$LOG_FILE"
+    exec > >(tee -a "$LOG_FILE") 2>&1
     log_msg "Início do teste '$1'. Arquivo de log: $LOG_FILE"
 }
 
 # Escreve uma mensagem com horário na tela e no arquivo de log.
 log_msg() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
 # Escreve um título de seção (separa ANTES / FALHA / DEPOIS no log).
 log_section() {
-    { echo ""; echo "=================== $* ==================="; } | tee -a "$LOG_FILE"
+    { echo ""; echo "=================== $* ==================="; }
 }
 
 # Executa um comando, mostrando-o (linha "$ comando") e gravando a saída no log.
@@ -40,13 +41,13 @@ log_section() {
 # Um código de saída diferente de zero é registrado, mas não interrompe o script:
 # o objetivo é documentar o que aconteceu, inclusive as falhas.
 log_cmd() {
-    echo "\$ $*" | tee -a "$LOG_FILE"
+    echo "\$ $*"
     if command -v timeout >/dev/null 2>&1; then
-        timeout "$CMD_TIMEOUT_SEG" "$@" 2>&1 | tee -a "$LOG_FILE"
+        timeout "$CMD_TIMEOUT_SEG" "$@"
     else
-        "$@" 2>&1 | tee -a "$LOG_FILE"
+        "$@"
     fi
-    local rc=${PIPESTATUS[0]}
+    local rc=$?
     if [ "$rc" -ne 0 ]; then
         log_msg "(comando terminou com código $rc; 124 significa que estourou CMD_TIMEOUT_SEG=${CMD_TIMEOUT_SEG}s)"
     fi

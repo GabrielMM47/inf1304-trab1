@@ -1,6 +1,4 @@
 #!/bin/bash
-# Redireciona a saída para um arquivo além do terminal
-exec > >(tee -a tests_execution.log) 2>&1
 
 # Script para demonstrar a elasticidade sob carga.
 # Fase 1: escala os produtores (o LAG do Kafka deve subir).

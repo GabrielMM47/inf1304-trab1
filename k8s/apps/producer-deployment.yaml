@@ -16,6 +16,19 @@ spec:
         app: producer
         sensor-id: maquina-1
     spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: confluentinc/cp-kafka:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Waiting for Kafka topic 'dados-sensores' to be created..."
+          while ! kafka-topics --bootstrap-server kafka:9092 --list 2>/dev/null | grep -q "dados-sensores"; do
+            sleep 2
+            echo "Waiting..."
+          done
+          echo "Kafka is ready and topics are created!"
       containers:
       - name: producer
         image: smart-factory-producer:latest
@@ -52,6 +65,19 @@ spec:
         app: producer
         sensor-id: maquina-2
     spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: confluentinc/cp-kafka:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Waiting for Kafka topic 'dados-sensores' to be created..."
+          while ! kafka-topics --bootstrap-server kafka:9092 --list 2>/dev/null | grep -q "dados-sensores"; do
+            sleep 2
+            echo "Waiting..."
+          done
+          echo "Kafka is ready and topics are created!"
       containers:
       - name: producer
         image: smart-factory-producer:latest
@@ -93,6 +119,19 @@ spec:
         app: producer
         sensor-id: maquina-3
     spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: confluentinc/cp-kafka:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Waiting for Kafka topic 'dados-sensores' to be created..."
+          while ! kafka-topics --bootstrap-server kafka:9092 --list 2>/dev/null | grep -q "dados-sensores"; do
+            sleep 2
+            echo "Waiting..."
+          done
+          echo "Kafka is ready and topics are created!"
       containers:
       - name: producer
         image: smart-factory-producer:latest

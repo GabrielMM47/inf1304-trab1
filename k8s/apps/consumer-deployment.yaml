@@ -12,6 +12,19 @@ spec:
       labels:
         app: consumer
     spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: confluentinc/cp-kafka:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Waiting for Kafka topic 'dados-sensores' to be created..."
+          while ! kafka-topics --bootstrap-server kafka:9092 --list 2>/dev/null | grep -q "dados-sensores"; do
+            sleep 2
+            echo "Waiting..."
+          done
+          echo "Kafka is ready and topics are created!"
       containers:
       - name: consumer
         image: smart-factory-consumer:latest

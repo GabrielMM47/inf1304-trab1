@@ -1,4 +1,7 @@
 #!/bin/bash
+# Redireciona a saída para um arquivo além do terminal
+exec > >(tee -a tests_execution.log) 2>&1
+
 # Script Interativo de Testes de Estresse, Falha e Auditoria
 
 function press_enter() {

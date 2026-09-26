@@ -1,4 +1,7 @@
 #!/bin/bash
+# Redireciona a saída para um arquivo além do terminal
+exec > >(tee -a tests_execution.log) 2>&1
+
 # Script para testar a resiliência (failover) de um Broker Kafka no cluster.
 # Deleta um pod Kafka e salva em logs/ o estado do tópico, do grupo e do banco ANTES e DEPOIS.
 #

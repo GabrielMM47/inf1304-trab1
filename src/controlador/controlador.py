@@ -7,6 +7,9 @@ para deletar pods (sensores) problemáticos.
 
 import os
 import json
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 import psycopg2
 from kafka import KafkaConsumer
 from kubernetes import client, config as k8s_config

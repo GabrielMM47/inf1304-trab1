@@ -9,7 +9,13 @@ echo "Verificando o status de processamento do grupo 'sensor-group'..."
 echo "A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento."
 echo ""
 
-kubectl exec -t kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+KAFKA_POD=$(kubectl get pods -l app=kafka -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' | awk '{print $1}')
+
+if [ -z "$KAFKA_POD" ]; then
+    echo "Nenhum broker Kafka está rodando no momento!"
+else
+    kubectl exec -t $KAFKA_POD -- kafka-consumer-groups --bootstrap-server kafka-0.kafka-headless:9092,kafka-1.kafka-headless:9092,kafka-2.kafka-headless:9092 --describe --group sensor-group
+fi
 
 echo ""
 echo "✅ Inspeção concluída!"

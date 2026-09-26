@@ -7,6 +7,9 @@ consumo de energia e emissão de CO2) e os envia para um tópico Kafka em format
 
 import os
 import json
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 import time
 import random
 import uuid

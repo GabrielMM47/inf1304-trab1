@@ -42,7 +42,7 @@ spec:
               name: postgres-credentials
               key: POSTGRES_PASSWORD
         - name: GENERATION_INTERVAL
-          value: "2.0"
+          value: "10.0"
 EOF
     else
         echo "Máquina $i já existe."

@@ -9,7 +9,7 @@ all: build deploy
 
 init:
 	@echo "Instalando dependências no Debian (requer senha sudo)..."
-	chmod +x scripts/install_deps.sh
+	chmod +x scripts/*.sh
 	sudo ./scripts/install_deps.sh
 
 start-cluster:
@@ -78,8 +78,7 @@ logs-producer:
 	kubectl logs -l app=producer -f --max-log-requests=15
 
 kafka-lag:
-	@echo "Inspecionando a fila (LAG) dos Consumidores no Kafka..."
-	kubectl exec -t kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+	@./scripts/inspect_queue.sh
 
 logs-consumer:
 	kubectl logs -l app=consumer -f --max-log-requests=15
@@ -104,7 +103,6 @@ db-ui:
 MACHINES ?= 5
 scale-producers:
 	@echo "Criando novas máquinas (deployments) se não existirem (Total desejado: $(MACHINES))..."
-	@chmod +x scripts/scale_producers.sh
 	@./scripts/scale_producers.sh $(MACHINES)
 
 MAQUINA ?= 1
@@ -119,5 +117,4 @@ scale-consumers:
 	kubectl scale deployment consumer --replicas=$(C_REPLICAS)
 
 test-all:
-	@chmod +x scripts/test_interactive.sh
 	@./scripts/test_interactive.sh

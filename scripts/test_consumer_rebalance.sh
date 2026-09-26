@@ -1,4 +1,7 @@
 #!/bin/bash
+# Redireciona a saída para um arquivo além do terminal
+exec > >(tee -a tests_execution.log) 2>&1
+
 # Script para testar o rebalanceamento de consumidores do Kafka.
 # Deleta um pod consumidor e salva em logs/ a atribuição de partições ANTES e DEPOIS.
 #

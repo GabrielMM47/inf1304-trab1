@@ -14,6 +14,8 @@ spec:
         - |
           echo "Waiting for Kafka to be ready..."
           sleep 15
-          kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --topic dados-sensores --partitions 3 --replication-factor 5
-          kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --topic comandos-fabrica --partitions 3 --replication-factor 5
+          kafka-topics --bootstrap-server kafka:9092 --delete --topic dados-sensores
+          kafka-topics --bootstrap-server kafka:9092 --delete --topic comandos-fabrica
+          kafka-topics --create --bootstrap-server kafka:9092 --topic dados-sensores --partitions 6 --replication-factor 3
+          kafka-topics --create --bootstrap-server kafka:9092 --topic comandos-fabrica --partitions 6 --replication-factor 3
       restartPolicy: OnFailure

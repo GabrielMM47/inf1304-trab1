@@ -4,7 +4,7 @@ metadata:
   name: kafka
 spec:
   serviceName: "kafka-headless"
-  replicas: 5
+  replicas: 3
   selector:
     matchLabels:
       app: kafka
@@ -20,10 +20,12 @@ spec:
         - configMapRef:
             name: kafka-config
         env:
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "false"
         - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
-          value: "5"
+          value: "3"
         - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
-          value: "5"
+          value: "3"
         - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
           value: "2"
         command:

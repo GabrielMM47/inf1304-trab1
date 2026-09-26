@@ -19,6 +19,16 @@ import random
 import redis
 import psycopg2
 from kafka import KafkaConsumer, KafkaProducer
+import signal
+import sys
+
+def tratar_sigterm(signum, frame):
+    """Garante que o SIGTERM do Kubernetes caia no fluxo de encerramento."""
+    print("Sinal SIGTERM recebido do Kubernetes. Iniciando desligamento gracioso...")
+    raise KeyboardInterrupt  # Dispara a sua cláusula try/except existente
+
+# Registra o gatilho
+signal.signal(signal.SIGTERM, tratar_sigterm)
 
 # Conexão com Redis (estado compartilhado) ou dicionário local (fallback)
 redis_host = os.environ.get("REDIS_HOST", "")
@@ -281,7 +291,9 @@ def main():
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
         auto_offset_reset='earliest',
         enable_auto_commit=False,
-        max_poll_interval_ms=600000  # 10 minutos para não dar timeout em demoras de I/O
+        session_timeout_ms=10000,   # Se ficar 10s sem dar sinal de vida, expulsa do grupo
+        heartbeat_interval_ms=3000, # Envia sinal de vida a cada 3s
+        max_poll_interval_ms=60000
     )
     
     produtor_comandos = KafkaProducer(

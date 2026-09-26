@@ -123,6 +123,17 @@ def init_postgres(config):
         print(f"Aviso: Não foi possível conectar ao PostgreSQL: {e}")
         return None
 
+def check_and_reconnect_pg(pg_conn, config):
+    if pg_conn is None:
+        return init_postgres(config)
+    try:
+        with pg_conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        return pg_conn
+    except Exception:
+        print("Conexão com Postgres perdida! Tentando reconectar e recriar tabelas...")
+        return init_postgres(config)
+
 def log_event(pg_conn, component, event_type, details):
     if not pg_conn:
         return
@@ -283,6 +294,7 @@ def main():
     try:
         for mensagem in consumidor:
             try:
+                pg_conn = check_and_reconnect_pg(pg_conn, config)
                 processar_mensagem(mensagem.value, config, produtor_comandos, pg_conn)
                 consumidor.commit()
             except Exception as e:

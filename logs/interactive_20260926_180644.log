@@ -1,0 +1,1587 @@
+[2026-09-26 18:06:44] Início do teste 'interactive'. Arquivo de log: logs/interactive_20260926_180644.log
+[H[2J[3J
+=================== Fase 0: Verificação de Saúde Inicial ===================
+[2026-09-26 18:06:44] Este é o ponto de partida. Vamos verificar se a infraestrutura está saudável.
+$ make status
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+Status dos Pods:
+kubectl get pods
+NAME                                  READY   STATUS      RESTARTS        AGE
+adminer-759d4954b8-v7mtp              1/1     Running     0               9m47s
+consumer-54f7bcd85b-lg5nq             1/1     Running     0               9m47s
+consumer-54f7bcd85b-ljvtz             1/1     Running     0               5m32s
+consumer-54f7bcd85b-wsvlg             1/1     Running     0               9m47s
+controlador-6bb4dfbb85-f5tvj          1/1     Running     1 (9m16s ago)   9m47s
+controlador-6bb4dfbb85-jsmtn          1/1     Running     1 (9m16s ago)   9m47s
+kafka-0                               1/1     Running     0               4m52s
+kafka-1                               1/1     Running     0               9m47s
+kafka-2                               1/1     Running     0               9m45s
+kafka-init-topics-n95rn               0/1     Completed   0               9m48s
+postgres-0                            1/1     Running     0               9m48s
+producer-maquina-1-77968ccfff-m9vc6   1/1     Running     0               21s
+producer-maquina-2-7c789dd7-rtr5w     1/1     Running     0               11s
+producer-maquina-3-b97db5bd9-4jwdw    1/1     Running     0               9m47s
+redis-864bdc977-kb85t                 1/1     Running     0               9m48s
+
+Status dos Serviços:
+kubectl get svc
+NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
+adminer          ClusterIP   10.43.222.196   <none>        8080/TCP            9m47s
+kafka            ClusterIP   10.43.144.241   <none>        9092/TCP            9m48s
+kafka-headless   ClusterIP   None            <none>        9092/TCP,9093/TCP   9m48s
+kubernetes       ClusterIP   10.43.0.1       <none>        443/TCP             18h
+postgres         ClusterIP   10.43.41.14     <none>        5432/TCP            9m48s
+redis            ClusterIP   10.43.151.92    <none>        6379/TCP            9m48s
+
+Status dos StatefulSets:
+kubectl get statefulset
+NAME       READY   AGE
+kafka      3/3     9m48s
+postgres   1/1     9m48s
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          434             434             0               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  1          419             419             0               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  2          410             411             1               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  3          431             436             5               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  4          397             397             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  5          449             449             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  6          414             414             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  7          438             439             1               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  8          446             446             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  9          456             456             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  10         452             452             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  11         417             418             1               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+
+[1;32mPressione [ENTER] para continuar...[0m
+[H[2J[3J
+=================== Fase 1: Elasticidade sob Carga (Injeção) ===================
+[2026-09-26 18:06:48] Vamos forçar uma alta carga (Escalando a máquina-1). O LAG (Fila) do Kafka começará a crescer.
+$ make scale-producers
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+Criando novas máquinas (deployments) se não existirem (Total desejado: 8)...
+Garantindo que existem 8 máquinas (deployments)...
+Máquina 1 já existe.
+Máquina 2 já existe.
+Máquina 3 já existe.
+Criando producer-maquina-4...
+deployment.apps/producer-maquina-4 created
+Criando producer-maquina-5...
+deployment.apps/producer-maquina-5 created
+Criando producer-maquina-6...
+deployment.apps/producer-maquina-6 created
+Criando producer-maquina-7...
+deployment.apps/producer-maquina-7 created
+Criando producer-maquina-8...
+deployment.apps/producer-maquina-8 created
+Verificando se há máquinas excedentes para remover...
+Concluído!
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+
+[2026-09-26 18:06:50] Entrando no painel dinâmico. Monitorando o LAG por 20 segundos...
+[2026-09-26 18:06:50] Aguardando o Kafka estabilizar (Rebalanceamento)... Isso pode levar alguns segundos.
+[2026-09-26 18:06:53] ✓ Cluster Kafka estabilizado! (Status: Stable)
+[H[2J[3J
+=================== MONITORAMENTO DE GARGALO (LAG) - Coletando amostra 1/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          440             443             3               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  1          424             426             2               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  2          414             416             2               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  3          441             441             0               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  4          401             406             5               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  5          451             452             1               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  6          416             418             2               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  7          444             444             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  8          450             451             1               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  9          459             459             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  10         457             461             4               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  11         422             422             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE GARGALO (LAG) - Coletando amostra 2/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          444             452             8               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  1          428             434             6               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  2          419             435             16              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  3          449             453             4               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  4          407             414             7               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  5          454             461             7               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  6          420             424             4               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  7          449             457             8               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  8          453             459             6               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  9          462             469             7               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  10         466             470             4               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  11         426             433             7               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE GARGALO (LAG) - Coletando amostra 3/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          448             461             13              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  1          433             447             14              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  2          423             444             21              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  3          453             463             10              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  4          410             429             19              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  5          455             473             18              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  6          423             428             5               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  7          460             465             5               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  8          457             465             8               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  9          462             476             14              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  10         477             483             6               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  11         430             442             12              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE GARGALO (LAG) - Coletando amostra 4/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          448             467             19              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  1          434             459             25              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  2          432             456             24              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  3          463             472             9               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  4          416             440             24              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  5          464             485             21              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  6          423             436             13              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  7          464             481             17              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  8          459             476             17              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  9          471             488             17              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  10         477             499             22              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  11         437             451             14              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE GARGALO (LAG) - Coletando amostra 5/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          448             471             23              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  1          440             469             29              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  2          444             464             20              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  3          463             483             20              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  4          416             452             36              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  5          466             499             33              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  6          431             446             15              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  7          472             494             22              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  8          465             487             22              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  9          478             500             22              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  10         483             505             22              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+sensor-group    dados-sensores  11         437             463             26              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== Fase 1: Elasticidade sob Carga (Resgate) ===================
+[2026-09-26 18:07:28] Vamos escalar os consumidores para esvaziar a fila acumulada.
+$ make scale-consumers
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+Escalando o grupo de consumidores extras para 12 instâncias rápidas para acelerar o processamento...
+Ajustando para 12 consumidores (3 base, 9 extras rápidas)...
+deployment.apps/consumer scaled
+Criando consumer-extra-1...
+deployment.apps/consumer-extra-1 created
+Criando consumer-extra-2...
+deployment.apps/consumer-extra-2 created
+Criando consumer-extra-3...
+deployment.apps/consumer-extra-3 created
+Criando consumer-extra-4...
+deployment.apps/consumer-extra-4 created
+Criando consumer-extra-5...
+deployment.apps/consumer-extra-5 created
+Criando consumer-extra-6...
+deployment.apps/consumer-extra-6 created
+Criando consumer-extra-7...
+deployment.apps/consumer-extra-7 created
+Criando consumer-extra-8...
+deployment.apps/consumer-extra-8 created
+Criando consumer-extra-9...
+deployment.apps/consumer-extra-9 created
+Verificando se há consumidores extras excedentes para remover...
+Concluído!
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+
+[2026-09-26 18:07:31] Entrando no painel dinâmico. Monitorando o alívio do LAG por 20 segundos...
+[2026-09-26 18:07:31] Aguardando o Kafka estabilizar (Rebalanceamento)... Isso pode levar alguns segundos.
+[2026-09-26 18:07:38] ✓ Cluster Kafka estabilizado! (Status: Stable)
+[H[2J[3J
+=================== MONITORAMENTO DE ALÍVIO (LAG) - Coletando amostra 1/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  1          452             495             43              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  5          491             528             37              kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          502             530             28              kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          485             527             42              kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          478             510             32              kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  2          460             494             34              kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         507             526             19              kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         466             492             26              kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  3          488             513             25              kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          474             498             24              kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          445             469             24              kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          448             475             27              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE ALÍVIO (LAG) - Coletando amostra 2/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  1          470             505             35              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  5          533             539             6               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          537             537             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          527             537             10              kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          518             518             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  2          504             507             3               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         537             537             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         506             509             3               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  3          509             516             7               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          509             509             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          483             484             1               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          468             487             19              kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE ALÍVIO (LAG) - Coletando amostra 3/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  1          488             512             24              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  5          550             550             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          552             552             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          544             544             0               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          525             525             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  2          517             517             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         543             543             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         518             518             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  3          528             528             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          521             521             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          498             498             0               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          487             493             6               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE ALÍVIO (LAG) - Coletando amostra 4/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  1          509             519             10              kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  5          561             562             1               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          558             558             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          557             558             1               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          540             540             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  2          529             529             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         554             554             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         523             523             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  3          533             533             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          532             532             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          509             510             1               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          500             500             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE ALÍVIO (LAG) - Coletando amostra 5/5 ===================
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  1          527             531             4               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  5          574             574             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          567             567             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          564             565             1               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          549             550             1               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  2          538             538             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         565             565             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         530             530             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  3          547             548             1               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          537             537             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          520             520             0               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          506             506             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== Fase 2: Resiliência de Processamento (Consumer Rebalance) ===================
+[2026-09-26 18:08:13] Iremos abater um consumidor. O Kafka reorganizará as tarefas entre os sobreviventes.
+$ ./scripts/test_consumer_rebalance.sh
+[2026-09-26 18:08:13] Início do teste 'rebalanco_consumidor'. Arquivo de log: logs/rebalanco_consumidor_20260926_180813.log
+==========================================================
+🔥 INJETANDO FALHA: DERRUBANDO UM CONSUMIDOR KAFKA 🔥
+==========================================================
+
+=================== ANTES: consumidores e partições atribuídas a cada um ===================
+$ kubectl get pods -l app=consumer -o wide
+NAME                                READY   STATUS    RESTARTS   AGE    IP            NODE    NOMINATED NODE   READINESS GATES
+consumer-54f7bcd85b-lg5nq           1/1     Running   0          11m    10.42.0.198   distr   <none>           <none>
+consumer-54f7bcd85b-ljvtz           1/1     Running   0          7m2s   10.42.0.245   distr   <none>           <none>
+consumer-54f7bcd85b-wsvlg           1/1     Running   0          11m    10.42.0.201   distr   <none>           <none>
+consumer-extra-1-76c8896bdf-t46x2   1/1     Running   0          46s    10.42.0.50    distr   <none>           <none>
+consumer-extra-2-64c7787d8b-dgq45   1/1     Running   0          46s    10.42.0.51    distr   <none>           <none>
+consumer-extra-3-766c54c4c9-dcrzh   1/1     Running   0          46s    10.42.0.52    distr   <none>           <none>
+consumer-extra-4-6d795f8c6d-m6hs9   1/1     Running   0          45s    10.42.0.53    distr   <none>           <none>
+consumer-extra-5-59f7fdc5b9-gcc77   1/1     Running   0          45s    10.42.0.54    distr   <none>           <none>
+consumer-extra-6-ffb7dbb6b-srrtm    1/1     Running   0          45s    10.42.0.55    distr   <none>           <none>
+consumer-extra-7-7d69785f95-mrz8w   1/1     Running   0          45s    10.42.0.56    distr   <none>           <none>
+consumer-extra-8-75f857c696-rqlr6   1/1     Running   0          44s    10.42.0.57    distr   <none>           <none>
+consumer-extra-9-64cdd57669-f75nv   1/1     Running   0          44s    10.42.0.58    distr   <none>           <none>
+$ kubectl exec kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  1          542             543             1               kafka-python-3.0.11-33fd223e-e4ec-4bb2-89db-15bc722f32f0 /10.42.0.198    kafka-python-3.0.11
+sensor-group    dados-sensores  5          588             589             1               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          578             579             1               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          570             570             0               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          563             563             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  2          547             548             1               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         578             578             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         539             539             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  3          558             561             3               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          546             546             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          529             530             1               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          513             513             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+=================== ÚLTIMAS LINHAS DE LOG DO CONSUMIDOR QUE SERÁ DERRUBADO (consumer-54f7bcd85b-lg5nq) ===================
+$ kubectl logs consumer-54f7bcd85b-lg5nq --tail=30 --timestamps
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+2026-09-26T18:08:07.015348495-03:00 Leitura recebida para energia: 455.58 na máquina 'maquina-4'
+2026-09-26T18:08:07.018090148-03:00 ALERTA! Alta energia detectada: 455.58 (Limite: 350.0) na máquina 'maquina-4' - Dados: {'maquina_id': 'maquina-4', 'energia': 455.58, 'timestamp': 1790456882.9560277}
+2026-09-26T18:08:07.233974269-03:00 Leitura recebida para temperatura: 86.1 na máquina 'maquina-7'
+2026-09-26T18:08:07.236447458-03:00 ALERTA! Alta temperatura detectada: 86.1 (Limite: 80.0) na máquina 'maquina-7' - Dados: {'maquina_id': 'maquina-7', 'temperatura': 86.1, 'timestamp': 1790456883.532458}
+2026-09-26T18:08:07.647013960-03:00 Leitura recebida para vibracao: 4.37 na máquina 'maquina-7'
+2026-09-26T18:08:07.648146295-03:00 ALERTA! Alta vibracao detectada: 4.37 (Limite: 3.5) na máquina 'maquina-7' - Dados: {'maquina_id': 'maquina-7', 'vibracao': 4.37, 'timestamp': 1790456885.0439513}
+2026-09-26T18:08:07.969549011-03:00 Leitura recebida para temperatura: 75.32 na máquina 'maquina-4'
+2026-09-26T18:08:08.235811709-03:00 Leitura recebida para vibracao: 1.3 na máquina 'maquina-7'
+2026-09-26T18:08:08.467277401-03:00 Leitura recebida para temperatura: 63.72 na máquina 'maquina-5'
+2026-09-26T18:08:08.730199712-03:00 Leitura recebida para co2: 999.53 na máquina 'maquina-5'
+2026-09-26T18:08:08.730873621-03:00 ALERTA! Alta co2 detectada: 999.53 (Limite: 600.0) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'co2': 999.53, 'timestamp': 1790456887.4330583}
+2026-09-26T18:08:08.967259098-03:00 Leitura recebida para temperatura: 71.7 na máquina 'maquina-1'
+2026-09-26T18:08:09.436537486-03:00 Leitura recebida para energia: 496.97 na máquina 'maquina-7'
+2026-09-26T18:08:09.437646967-03:00 ALERTA! Alta energia detectada: 496.97 (Limite: 350.0) na máquina 'maquina-7' - Dados: {'maquina_id': 'maquina-7', 'energia': 496.97, 'timestamp': 1790456888.5711997}
+2026-09-26T18:08:09.778258136-03:00 Leitura recebida para energia: 330.06 na máquina 'maquina-4'
+2026-09-26T18:08:10.068893991-03:00 Leitura recebida para temperatura: 95.08 na máquina 'maquina-2'
+2026-09-26T18:08:10.070049449-03:00 ALERTA! Alta temperatura detectada: 95.08 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 95.08, 'timestamp': 1790456889.4283154}
+2026-09-26T18:08:11.713164815-03:00 Leitura recebida para vibracao: 2.28 na máquina 'maquina-5'
+2026-09-26T18:08:12.116685775-03:00 Leitura recebida para energia: 475.73 na máquina 'maquina-6'
+2026-09-26T18:08:12.117891570-03:00 ALERTA! Alta energia detectada: 475.73 (Limite: 350.0) na máquina 'maquina-6' - Dados: {'maquina_id': 'maquina-6', 'energia': 475.73, 'timestamp': 1790456891.4669156}
+2026-09-26T18:08:12.480623509-03:00 Leitura recebida para vibracao: 4.69 na máquina 'maquina-1'
+2026-09-26T18:08:12.481469235-03:00 ALERTA! Alta vibracao detectada: 4.69 (Limite: 3.5) na máquina 'maquina-1' - Dados: {'maquina_id': 'maquina-1', 'vibracao': 4.69, 'timestamp': 1790456892.013684}
+2026-09-26T18:08:13.267086976-03:00 Leitura recebida para vibracao: 3.58 na máquina 'maquina-5'
+2026-09-26T18:08:13.267099470-03:00 ALERTA! Alta vibracao detectada: 3.58 (Limite: 3.5) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'vibracao': 3.58, 'timestamp': 1790456892.9747365}
+2026-09-26T18:08:14.512560998-03:00 Leitura recebida para vibracao: 0.28 na máquina 'maquina-8'
+2026-09-26T18:08:14.861122815-03:00 Leitura recebida para co2: 437.77 na máquina 'maquina-6'
+2026-09-26T18:08:15.271067906-03:00 Leitura recebida para vibracao: 1.65 na máquina 'maquina-4'
+2026-09-26T18:08:15.632109352-03:00 Leitura recebida para temperatura: 99.37 na máquina 'maquina-2'
+2026-09-26T18:08:15.632889363-03:00 ALERTA! Alta temperatura detectada: 99.37 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 99.37, 'timestamp': 1790456894.9347372}
+2026-09-26T18:08:15.859768555-03:00 Leitura recebida para temperatura: 58.14 na máquina 'maquina-5'
+
+=================== FALHA: deletando o pod consumer-54f7bcd85b-lg5nq ===================
+[2026-09-26 18:08:15] 💀 Alvo travado: consumer-54f7bcd85b-lg5nq
+$ kubectl delete pod consumer-54f7bcd85b-lg5nq
+pod "consumer-54f7bcd85b-lg5nq" deleted from default namespace
+[2026-09-26 18:08:16] Aguardando 2s para o Kafka detectar a saída e rebalancear...
+
+=================== DEPOIS: consumidores e partições (compare com o ANTES) ===================
+$ kubectl get pods -l app=consumer -o wide
+NAME                                READY   STATUS     RESTARTS   AGE    IP            NODE    NOMINATED NODE   READINESS GATES
+consumer-54f7bcd85b-2n24r           0/1     Init:0/1   0          2s     10.42.0.65    distr   <none>           <none>
+consumer-54f7bcd85b-ljvtz           1/1     Running    0          7m6s   10.42.0.245   distr   <none>           <none>
+consumer-54f7bcd85b-wsvlg           1/1     Running    0          11m    10.42.0.201   distr   <none>           <none>
+consumer-extra-1-76c8896bdf-t46x2   1/1     Running    0          50s    10.42.0.50    distr   <none>           <none>
+consumer-extra-2-64c7787d8b-dgq45   1/1     Running    0          50s    10.42.0.51    distr   <none>           <none>
+consumer-extra-3-766c54c4c9-dcrzh   1/1     Running    0          50s    10.42.0.52    distr   <none>           <none>
+consumer-extra-4-6d795f8c6d-m6hs9   1/1     Running    0          49s    10.42.0.53    distr   <none>           <none>
+consumer-extra-5-59f7fdc5b9-gcc77   1/1     Running    0          49s    10.42.0.54    distr   <none>           <none>
+consumer-extra-6-ffb7dbb6b-srrtm    1/1     Running    0          49s    10.42.0.55    distr   <none>           <none>
+consumer-extra-7-7d69785f95-mrz8w   1/1     Running    0          49s    10.42.0.56    distr   <none>           <none>
+consumer-extra-8-75f857c696-rqlr6   1/1     Running    0          48s    10.42.0.57    distr   <none>           <none>
+consumer-extra-9-64cdd57669-f75nv   1/1     Running    0          48s    10.42.0.58    distr   <none>           <none>
+$ kubectl exec kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+Warning: Consumer group 'sensor-group' is rebalancing.
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          549             550             1               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  1          550             550             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  5          597             597             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          583             583             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          578             578             0               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          571             571             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  2          551             551             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         585             585             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         542             542             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  3          565             567             2               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  6          543             544             1               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          520             520             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+=================== LOGS DOS CONSUMIDORES EM EXECUÇÃO (últimas 30 linhas de cada) ===================
+$ kubectl logs -l app=consumer --prefix --timestamps --since=3s --tail=30 --max-log-requests=10
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:18.238973821-03:00 Leitura recebida para energia: 375.44 na máquina 'maquina-8'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:18.240509888-03:00 ALERTA! Alta energia detectada: 375.44 (Limite: 350.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'energia': 375.44, 'timestamp': 1790456898.0679739}
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:20.303707120-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:20.758882580-03:00 Leitura recebida para energia: 322.25 na máquina 'maquina-5'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:20.766450288-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=11)} for group sensor-group
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:20.766467672-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:20.774512773-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a, protocol: range)>
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:20.783126100-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=11)]
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:08:20.785656306-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=11)} for group sensor-group
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.628716663-03:00 INFO:kafka.net.manager:Closing bootstrap connection bootstrap-0
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.628822114-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.43.144.241:9092<-32918]>: Closing transport
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.629079918-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=bootstrap-0 broker_version=(4, 3) (disconnected)>: Connection closed
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.629312652-03:00 INFO:kafka.cluster:Starting metadata refresh loop
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.629484591-03:00 INFO:kafka.producer.kafka:<KafkaProducer client_id=kafka-python-producer-1 transactional_id=None>: Instantiated an idempotent producer.
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.630201181-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to -1 with epoch -1
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.630346168-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.630397607-03:00 Conectado! Escutando por mensagens...
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.631040105-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.632580670-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.200:9092<-48610]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.65', 48610), raddr=('10.42.0.200', 9092)>
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.633092389-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.200:9092<-48604]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.65', 48604), raddr=('10.42.0.200', 9092)>
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.635396424-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.200:9092<-48610] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.636270294-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.200:9092<-48604] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.638544422-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-1', host='kafka-1.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.638556524-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-1 for group sensor-group
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.638558469-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.639891697-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 42 with epoch 0
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.640233351-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.200:9092<-48620]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.65', 48620), raddr=('10.42.0.200', 9092)>
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.640831454-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.640957104-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.643588275-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-1 host=[10.42.0.200:9092<-48620] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.646003212-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 for group sensor-group; will retry join-group
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.646009944-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:19.720772907-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:20.773845747-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9, protocol: range)>
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:20.793294209-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=4)]
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:20.793317854-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=4)} for group sensor-group
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:20.801904771-03:00 INFO:kafka.net.manager:Initializing connection for node_id 2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:20.803096680-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.202:9092<-53210]>: connected to <socket.socket fd=13, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.65', 53210), raddr=('10.42.0.202', 9092)>
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:08:20.809803161-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=2 host=[10.42.0.202:9092<-53210] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:18.263029170-03:00 Leitura recebida para temperatura: 22.72 na máquina 'maquina-4'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.208262688-03:00 Leitura recebida para co2: 557.0 na máquina 'maquina-4'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.307130264-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.689777224-03:00 Leitura recebida para temperatura: 47.69 na máquina 'maquina-1'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.695294873-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=3)} for group sensor-group
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.695317676-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.769130542-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df, protocol: range)>
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.770835262-03:00 INFO:kafka.coordinator:Elected group leader -- performing partition assignments using range
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.776686027-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.784929948-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=2)]
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:08:20.785722534-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=2)} for group sensor-group
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:18.682929772-03:00 Leitura recebida para vibracao: 4.26 na máquina 'maquina-6'
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:18.687018169-03:00 ALERTA! Alta vibracao detectada: 4.26 (Limite: 3.5) na máquina 'maquina-6' - Dados: {'maquina_id': 'maquina-6', 'vibracao': 4.26, 'timestamp': 1790456898.5098174}
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:20.306452508-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:20.707575070-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=10)} for group sensor-group
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:20.707684599-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:20.770901678-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f, protocol: range)>
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:20.779953865-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=10)]
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:20.780857763-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=10)} for group sensor-group
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:20.906220754-03:00 Leitura recebida para co2: 897.02 na máquina 'maquina-7'
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:08:20.951420156-03:00 ALERTA! Alta co2 detectada: 897.02 (Limite: 600.0) na máquina 'maquina-7' - Dados: {'maquina_id': 'maquina-7', 'co2': 897.02, 'timestamp': 1790456900.6223547}
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:18.247765539-03:00 Leitura recebida para temperatura: 62.78 na máquina 'maquina-1'
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:18.673617871-03:00 Leitura recebida para energia: 339.0 na máquina 'maquina-2'
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:19.213491800-03:00 Leitura recebida para vibracao: 0.26 na máquina 'maquina-5'
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:19.717174358-03:00 Leitura recebida para temperatura: 83.94 na máquina 'maquina-6'
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:19.717582017-03:00 ALERTA! Alta temperatura detectada: 83.94 (Limite: 80.0) na máquina 'maquina-6' - Dados: {'maquina_id': 'maquina-6', 'temperatura': 83.94, 'timestamp': 1790456899.5156987}
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:20.307229825-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:20.731300739-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=8)} for group sensor-group
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:20.731545908-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:20.768415275-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0, protocol: range)>
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:20.778921972-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=8)]
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:08:20.778992127-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=8)} for group sensor-group
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:18.197452280-03:00 Leitura recebida para vibracao: 1.15 na máquina 'maquina-1'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:18.641944376-03:00 Leitura recebida para co2: 429.51 na máquina 'maquina-2'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:18.772406506-03:00 Leitura recebida para temperatura: 97.95 na máquina 'maquina-6'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:18.774361163-03:00 ALERTA! Alta temperatura detectada: 97.95 (Limite: 80.0) na máquina 'maquina-6' - Dados: {'maquina_id': 'maquina-6', 'temperatura': 97.95, 'timestamp': 1790456898.5098174}
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:18.968584653-03:00 Leitura recebida para vibracao: 3.12 na máquina 'maquina-8'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:19.192131834-03:00 Leitura recebida para temperatura: 30.56 na máquina 'maquina-4'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:19.367526656-03:00 Leitura recebida para temperatura: 86.08 na máquina 'maquina-8'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:19.373676703-03:00 ALERTA! Alta temperatura detectada: 86.08 (Limite: 80.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'temperatura': 86.08, 'timestamp': 1790456899.0782158}
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:20.306581415-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:20.388901175-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=6)} for group sensor-group
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:20.389239342-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:20.772890000-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde, protocol: range)>
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:20.782032238-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=6)]
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:20.785395458-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=6)} for group sensor-group
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:20.913172063-03:00 Leitura recebida para vibracao: 3.9 na máquina 'maquina-4'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:08:20.951585172-03:00 ALERTA! Alta vibracao detectada: 3.9 (Limite: 3.5) na máquina 'maquina-4' - Dados: {'maquina_id': 'maquina-4', 'vibracao': 3.9, 'timestamp': 1790456900.5666406}
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:08:18.801450643-03:00 Leitura recebida para temperatura: 62.87 na máquina 'maquina-3'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:08:19.904065239-03:00 Leitura recebida para energia: 171.28 na máquina 'maquina-6'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:08:20.303855323-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:08:20.510849738-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=4)} for group sensor-group
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:08:20.510878402-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:08:20.770061823-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de, protocol: range)>
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:08:20.784914619-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=3)]
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:08:20.785199774-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=3)} for group sensor-group
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:08:20.253772634-03:00 Leitura recebida para vibracao: 3.09 na máquina 'maquina-8'
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:08:20.308983016-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:08:20.747256624-03:00 Leitura recebida para vibracao: 0.76 na máquina 'maquina-5'
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:08:20.755364935-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=2)} for group sensor-group
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:08:20.755605585-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:08:20.768426397-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574, protocol: range)>
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:08:20.782003654-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=1)]
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:08:20.782188047-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=1)} for group sensor-group
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.590218577-03:00 Leitura recebida para temperatura: 98.63 na máquina 'maquina-2'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.592297952-03:00 ALERTA! Alta temperatura detectada: 98.63 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 98.63, 'timestamp': 1790456898.4674902}
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.595055554-03:00 
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.595066444-03:00 [CRÍTICO GLOBAL] MÁQUINA PROBLEMÁTICA DETECTADA: maquina-2
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.595068328-03:00 Motivo: 8 alertas em menos de 7.0s (Compartilhado via Redis).
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.595071243-03:00 Enviando comando de KILL para o controlador...
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.595072666-03:00 
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.595081373-03:00 INFO:kafka.net.manager:Initializing connection for node_id 2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.598122016-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.202:9092<-55622]>: connected to <socket.socket fd=14, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.51', 55622), raddr=('10.42.0.202', 9092)>
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:18.601201824-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=2 host=[10.42.0.202:9092<-55622] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:20.199221753-03:00 Leitura recebida para vibracao: 2.02 na máquina 'maquina-6'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:20.306330495-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:20.716235767-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=9)} for group sensor-group
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:20.716536643-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:20.772120880-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2, protocol: range)>
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:20.787468592-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=9)]
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:08:20.789852509-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=9)} for group sensor-group
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:19.649485388-03:00 Leitura recebida para co2: 845.49 na máquina 'maquina-6'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:19.650484258-03:00 ALERTA! Alta co2 detectada: 845.49 (Limite: 600.0) na máquina 'maquina-6' - Dados: {'maquina_id': 'maquina-6', 'co2': 845.49, 'timestamp': 1790456899.5156987}
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:19.789129532-03:00 Leitura recebida para temperatura: 89.53 na máquina 'maquina-5'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:19.789598899-03:00 ALERTA! Alta temperatura detectada: 89.53 (Limite: 80.0) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'temperatura': 89.53, 'timestamp': 1790456899.518557}
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.199095172-03:00 Leitura recebida para temperatura: 31.55 na máquina 'maquina-8'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.303383321-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.388070196-03:00 Leitura recebida para energia: 494.89 na máquina 'maquina-8'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.390857575-03:00 ALERTA! Alta energia detectada: 494.89 (Limite: 350.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'energia': 494.89, 'timestamp': 1790456900.0821037}
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.401421831-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=1), TopicPartition(topic='dados-sensores', partition=0)} for group sensor-group
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.401457190-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.775650006-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55, protocol: range)>
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.784883018-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=0)]
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:08:20.787282045-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=0)} for group sensor-group
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:18.643931996-03:00 Leitura recebida para temperatura: 57.5 na máquina 'maquina-5'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:19.180661094-03:00 Leitura recebida para vibracao: 4.3 na máquina 'maquina-4'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:19.181895133-03:00 ALERTA! Alta vibracao detectada: 4.3 (Limite: 3.5) na máquina 'maquina-4' - Dados: {'maquina_id': 'maquina-4', 'vibracao': 4.3, 'timestamp': 1790456899.0518665}
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:19.366770540-03:00 Leitura recebida para energia: 331.8 na máquina 'maquina-4'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:19.769646665-03:00 Leitura recebida para vibracao: 2.91 na máquina 'maquina-1'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:20.222717653-03:00 Leitura recebida para temperatura: 88.32 na máquina 'maquina-4'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:20.223010052-03:00 ALERTA! Alta temperatura detectada: 88.32 (Limite: 80.0) na máquina 'maquina-4' - Dados: {'maquina_id': 'maquina-4', 'temperatura': 88.32, 'timestamp': 1790456900.0641675}
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:20.308172356-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:20.742598378-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=7)} for group sensor-group
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:20.742615110-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:20.769600030-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d, protocol: range)>
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:20.778963301-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=7)]
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:20.778969844-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=7)} for group sensor-group
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:08:21.256300050-03:00 Leitura recebida para energia: 183.89 na máquina 'maquina-4'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:18.626877792-03:00 Leitura recebida para energia: 423.61 na máquina 'maquina-5'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:18.627413686-03:00 ALERTA! Alta energia detectada: 423.61 (Limite: 350.0) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'energia': 423.61, 'timestamp': 1790456898.5071309}
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:19.204729017-03:00 Leitura recebida para temperatura: 51.15 na máquina 'maquina-1'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:19.403771139-03:00 Leitura recebida para energia: 232.0 na máquina 'maquina-1'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:20.308735563-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:20.420258925-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions {TopicPartition(topic='dados-sensores', partition=5)} for group sensor-group
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:20.420304292-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:20.773872659-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 9 (member_id: kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59, protocol: range)>
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:20.779047793-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: [TopicPartition(topic='dados-sensores', partition=5)]
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:20.779056429-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions {TopicPartition(topic='dados-sensores', partition=5)} for group sensor-group
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:20.936299048-03:00 Leitura recebida para temperatura: 61.83 na máquina 'maquina-5'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:21.084196740-03:00 Leitura recebida para temperatura: 42.22 na máquina 'maquina-7'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:21.249273877-03:00 Leitura recebida para temperatura: 34.72 na máquina 'maquina-1'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:21.401840355-03:00 Leitura recebida para temperatura: 86.52 na máquina 'maquina-8'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:08:21.402888179-03:00 ALERTA! Alta temperatura detectada: 86.52 (Limite: 80.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'temperatura': 86.52, 'timestamp': 1790456901.1507328}
+[2026-09-26 18:08:21] ✅ Falha injetada e evidências salvas em: logs/rebalanco_consumidor_20260926_180813.log
+O que observar:
+1. Na tabela do DEPOIS, as partições do consumidor derrubado passaram a ter outro CONSUMER-ID.
+2. Nenhuma partição deve ficar sem consumidor (CONSUMER-ID '-').
+3. O Kubernetes sobe um novo pod para repor a réplica, causando um novo rebalanço.
+[2026-09-26 18:08:21] Entrando no painel dinâmico. Monitorando o rebalanceamento por 20 segundos...
+[H[2J[3J
+=================== MONITORAMENTO DE REBALANCEAMENTO - Coletando amostra 1/5 ===================
+[2026-09-26 18:08:21] Status dos Consumidores:
+$ kubectl get pods -l app=consumer
+NAME                                READY   STATUS    RESTARTS   AGE
+consumer-54f7bcd85b-2n24r           1/1     Running   0          5s
+consumer-54f7bcd85b-ljvtz           1/1     Running   0          7m9s
+consumer-54f7bcd85b-wsvlg           1/1     Running   0          11m
+consumer-extra-1-76c8896bdf-t46x2   1/1     Running   0          53s
+consumer-extra-2-64c7787d8b-dgq45   1/1     Running   0          53s
+consumer-extra-3-766c54c4c9-dcrzh   1/1     Running   0          53s
+consumer-extra-4-6d795f8c6d-m6hs9   1/1     Running   0          52s
+consumer-extra-5-59f7fdc5b9-gcc77   1/1     Running   0          52s
+consumer-extra-6-ffb7dbb6b-srrtm    1/1     Running   0          52s
+consumer-extra-7-7d69785f95-mrz8w   1/1     Running   0          52s
+consumer-extra-8-75f857c696-rqlr6   1/1     Running   0          51s
+consumer-extra-9-64cdd57669-f75nv   1/1     Running   0          51s
+
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          603             603             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          584             584             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          581             582             1               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          575             575             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          551             551             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         588             589             1               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         545             545             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          554             556             2               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          556             557             1               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          546             546             0               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          526             526             0               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          568             568             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE REBALANCEAMENTO - Coletando amostra 2/5 ===================
+[2026-09-26 18:08:27] Status dos Consumidores:
+$ kubectl get pods -l app=consumer
+NAME                                READY   STATUS    RESTARTS   AGE
+consumer-54f7bcd85b-2n24r           1/1     Running   0          11s
+consumer-54f7bcd85b-ljvtz           1/1     Running   0          7m15s
+consumer-54f7bcd85b-wsvlg           1/1     Running   0          11m
+consumer-extra-1-76c8896bdf-t46x2   1/1     Running   0          59s
+consumer-extra-2-64c7787d8b-dgq45   1/1     Running   0          59s
+consumer-extra-3-766c54c4c9-dcrzh   1/1     Running   0          59s
+consumer-extra-4-6d795f8c6d-m6hs9   1/1     Running   0          58s
+consumer-extra-5-59f7fdc5b9-gcc77   1/1     Running   0          58s
+consumer-extra-6-ffb7dbb6b-srrtm    1/1     Running   0          58s
+consumer-extra-7-7d69785f95-mrz8w   1/1     Running   0          58s
+consumer-extra-8-75f857c696-rqlr6   1/1     Running   0          57s
+consumer-extra-9-64cdd57669-f75nv   1/1     Running   0          57s
+
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          612             613             1               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          592             592             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          590             590             0               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          582             582             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          561             562             1               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         597             598             1               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         550             550             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          563             564             1               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          565             565             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          556             557             1               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          533             533             0               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          577             578             1               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE REBALANCEAMENTO - Coletando amostra 3/5 ===================
+[2026-09-26 18:08:33] Status dos Consumidores:
+$ kubectl get pods -l app=consumer
+NAME                                READY   STATUS    RESTARTS   AGE
+consumer-54f7bcd85b-2n24r           1/1     Running   0          17s
+consumer-54f7bcd85b-ljvtz           1/1     Running   0          7m21s
+consumer-54f7bcd85b-wsvlg           1/1     Running   0          11m
+consumer-extra-1-76c8896bdf-t46x2   1/1     Running   0          65s
+consumer-extra-2-64c7787d8b-dgq45   1/1     Running   0          65s
+consumer-extra-3-766c54c4c9-dcrzh   1/1     Running   0          65s
+consumer-extra-4-6d795f8c6d-m6hs9   1/1     Running   0          64s
+consumer-extra-5-59f7fdc5b9-gcc77   1/1     Running   0          64s
+consumer-extra-6-ffb7dbb6b-srrtm    1/1     Running   0          64s
+consumer-extra-7-7d69785f95-mrz8w   1/1     Running   0          64s
+consumer-extra-8-75f857c696-rqlr6   1/1     Running   0          63s
+consumer-extra-9-64cdd57669-f75nv   1/1     Running   0          63s
+
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          617             617             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          605             605             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          599             599             0               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          585             585             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          569             569             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         602             602             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         558             558             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          573             573             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          572             572             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          568             568             0               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          544             544             0               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          583             583             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE REBALANCEAMENTO - Coletando amostra 4/5 ===================
+[2026-09-26 18:08:39] Status dos Consumidores:
+$ kubectl get pods -l app=consumer
+NAME                                READY   STATUS    RESTARTS   AGE
+consumer-54f7bcd85b-2n24r           1/1     Running   0          24s
+consumer-54f7bcd85b-ljvtz           1/1     Running   0          7m28s
+consumer-54f7bcd85b-wsvlg           1/1     Running   0          11m
+consumer-extra-1-76c8896bdf-t46x2   1/1     Running   0          72s
+consumer-extra-2-64c7787d8b-dgq45   1/1     Running   0          72s
+consumer-extra-3-766c54c4c9-dcrzh   1/1     Running   0          72s
+consumer-extra-4-6d795f8c6d-m6hs9   1/1     Running   0          71s
+consumer-extra-5-59f7fdc5b9-gcc77   1/1     Running   0          71s
+consumer-extra-6-ffb7dbb6b-srrtm    1/1     Running   0          71s
+consumer-extra-7-7d69785f95-mrz8w   1/1     Running   0          71s
+consumer-extra-8-75f857c696-rqlr6   1/1     Running   0          70s
+consumer-extra-9-64cdd57669-f75nv   1/1     Running   0          70s
+
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          626             626             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          615             616             1               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          612             615             3               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          595             596             1               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          580             580             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         606             607             1               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         565             565             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          581             581             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          581             582             1               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          580             580             0               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          553             555             2               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          590             592             2               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== MONITORAMENTO DE REBALANCEAMENTO - Coletando amostra 5/5 ===================
+[2026-09-26 18:08:46] Status dos Consumidores:
+$ kubectl get pods -l app=consumer
+NAME                                READY   STATUS    RESTARTS   AGE
+consumer-54f7bcd85b-2n24r           1/1     Running   0          30s
+consumer-54f7bcd85b-ljvtz           1/1     Running   0          7m34s
+consumer-54f7bcd85b-wsvlg           1/1     Running   0          11m
+consumer-extra-1-76c8896bdf-t46x2   1/1     Running   0          78s
+consumer-extra-2-64c7787d8b-dgq45   1/1     Running   0          78s
+consumer-extra-3-766c54c4c9-dcrzh   1/1     Running   0          78s
+consumer-extra-4-6d795f8c6d-m6hs9   1/1     Running   0          77s
+consumer-extra-5-59f7fdc5b9-gcc77   1/1     Running   0          77s
+consumer-extra-6-ffb7dbb6b-srrtm    1/1     Running   0          77s
+consumer-extra-7-7d69785f95-mrz8w   1/1     Running   0          77s
+consumer-extra-8-75f857c696-rqlr6   1/1     Running   0          76s
+consumer-extra-9-64cdd57669-f75nv   1/1     Running   0          76s
+
+$ make kafka-lag
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+==========================================================
+📊 INSPECIONANDO A FILA DE MENSAGENS DO KAFKA 📊
+==========================================================
+Verificando o status de processamento do grupo 'sensor-group'...
+A coluna 'LAG' indica quantas mensagens estão paradas na fila aguardando processamento.
+
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          635             635             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          623             624             1               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          620             620             0               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          600             603             3               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          592             592             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         610             612             2               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         570             570             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          591             593             2               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          586             586             0               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          588             588             0               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          565             566             1               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          596             596             0               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+
+✅ Inspeção concluída!
+Dica: Execute este comando repetidas vezes durante o teste de elasticidade (ou falha) para ver a fila aumentar, e depois diminuir quando mais consumidores subirem.
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+[H[2J[3J
+=================== Fase 3: Caos na Infraestrutura (Broker Failover) ===================
+[2026-09-26 18:08:52] Vamos deletar o broker líder do Kafka e observar a auto-recuperação do cluster KRaft.
+$ ./scripts/test_broker_failover.sh
+[2026-09-26 18:08:52] Início do teste 'failover_broker'. Arquivo de log: logs/failover_broker_20260926_180852.log
+==========================================================
+🔥 INJETANDO FALHA: DERRUBANDO UM BROKER KAFKA 🔥
+==========================================================
+
+=================== ANTES: brokers, partições (líder/réplicas/ISR), grupo de consumo e banco ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          7m    10.42.0.4     distr   <none>           <none>
+kafka-1   1/1     Running   0          11m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          11m   10.42.0.202   distr   <none>           <none>
+$ kubectl exec kafka-0 -- kafka-topics --bootstrap-server localhost:9092 --describe --topic dados-sensores
+Topic: dados-sensores	TopicId: kIckwMYZTSu5FnnFCe-6Cw	PartitionCount: 12	ReplicationFactor: 3	Configs: min.insync.replicas=1
+	Topic: dados-sensores	Partition: 0	Leader: 2	Replicas: 2,0,1	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 1	Leader: 0	Replicas: 0,1,2	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 2	Leader: 1	Replicas: 1,2,0	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 3	Leader: 1	Replicas: 1,2,0	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 4	Leader: 2	Replicas: 2,0,1	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 5	Leader: 0	Replicas: 0,1,2	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 6	Leader: 2	Replicas: 2,1,0	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 7	Leader: 1	Replicas: 1,0,2	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 8	Leader: 0	Replicas: 0,2,1	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 9	Leader: 0	Replicas: 0,1,2	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 10	Leader: 1	Replicas: 1,2,0	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 11	Leader: 2	Replicas: 2,0,1	Isr: 0,1,2	Elr: 	LastKnownElr: 
+$ kubectl exec kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          644             644             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          633             633             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          628             629             1               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          615             615             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          608             608             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         631             632             1               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         579             579             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          600             600             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          595             596             1               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          598             599             1               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          573             573             0               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          605             608             3               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -tA -c SELECT now() AS momento, count(*) AS total_leituras FROM leituras_sensores;
+2026-09-26 21:08:56.122977+00|56573
+
+=================== FALHA: deletando à força o broker kafka-0 ===================
+[2026-09-26 18:08:56] 💀 Alvo travado: kafka-0
+[2026-09-26 18:08:56] Executando deleção forçada (simulando perda de energia ou kernel panic)...
+$ kubectl delete pod kafka-0 --force --grace-period=0
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "kafka-0" force deleted from default namespace
+[2026-09-26 18:08:56] Aguardando 3s para o cluster reagir...
+
+=================== DEPOIS: consultas feitas no broker sobrevivente (evitando kafka-0) ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          3s    10.42.0.76    distr   <none>           <none>
+kafka-1   1/1     Running   0          12m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          12m   10.42.0.202   distr   <none>           <none>
+$ kubectl exec kafka-1 -- kafka-topics --bootstrap-server localhost:9092 --describe --topic dados-sensores
+Topic: dados-sensores	TopicId: kIckwMYZTSu5FnnFCe-6Cw	PartitionCount: 12	ReplicationFactor: 3	Configs: min.insync.replicas=1
+	Topic: dados-sensores	Partition: 0	Leader: 2	Replicas: 2,0,1	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 1	Leader: 1	Replicas: 0,1,2	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 2	Leader: 1	Replicas: 1,2,0	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 3	Leader: 1	Replicas: 1,2,0	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 4	Leader: 2	Replicas: 2,0,1	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 5	Leader: 1	Replicas: 0,1,2	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 6	Leader: 2	Replicas: 2,1,0	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 7	Leader: 1	Replicas: 1,0,2	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 8	Leader: 2	Replicas: 0,2,1	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 9	Leader: 1	Replicas: 0,1,2	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 10	Leader: 1	Replicas: 1,2,0	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 11	Leader: 2	Replicas: 2,0,1	Isr: 1,2	Elr: 	LastKnownElr: 
+$ kubectl exec kafka-1 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          658             661             3               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          649             649             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          636             637             1               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          624             624             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          614             615             1               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         641             641             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         588             588             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          607             608             1               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          603             604             1               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          615             615             0               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          591             593             2               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          619             622             3               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -tA -c SELECT now() AS momento, count(*) AS total_leituras FROM leituras_sensores;
+2026-09-26 21:09:04.374341+00|56706
+
+=================== LOGS DOS CONSUMIDORES NA JANELA DA FALHA (últimos 3s) ===================
+$ kubectl logs -l app=consumer --prefix --timestamps --since=3s --tail=30 --max-log-requests=10
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:09:02.954593780-03:00 Leitura recebida para co2: 905.12 na máquina 'maquina-5'
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:09:02.955773856-03:00 ALERTA! Alta co2 detectada: 905.12 (Limite: 600.0) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'co2': 905.12, 'timestamp': 1790456942.829245}
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:09:03.974015988-03:00 Leitura recebida para energia: 496.96 na máquina 'maquina-2'
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:09:03.974798624-03:00 ALERTA! Alta energia detectada: 496.96 (Limite: 350.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'energia': 496.96, 'timestamp': 1790456943.798811}
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:01.533878097-03:00 Leitura recebida para energia: 477.73 na máquina 'maquina-4'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:01.538366436-03:00 ALERTA! Alta energia detectada: 477.73 (Limite: 350.0) na máquina 'maquina-4' - Dados: {'maquina_id': 'maquina-4', 'energia': 477.73, 'timestamp': 1790456941.4013245}
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:01.670205604-03:00 Leitura recebida para temperatura: 29.27 na máquina 'maquina-1'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:01.852495702-03:00 Leitura recebida para energia: 319.1 na máquina 'maquina-1'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:02.054587919-03:00 Leitura recebida para vibracao: 0.97 na máquina 'maquina-8'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:02.217828117-03:00 Leitura recebida para co2: 976.31 na máquina 'maquina-8'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:02.287775752-03:00 ALERTA! Alta co2 detectada: 976.31 (Limite: 600.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'co2': 976.31, 'timestamp': 1790456941.8102937}
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:09:01.866917934-03:00 Leitura recebida para energia: 197.3 na máquina 'maquina-2'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:09:03.999294033-03:00 Leitura recebida para temperatura: 90.19 na máquina 'maquina-7'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:09:04.000151714-03:00 ALERTA! Alta temperatura detectada: 90.19 (Limite: 80.0) na máquina 'maquina-7' - Dados: {'maquina_id': 'maquina-7', 'temperatura': 90.19, 'timestamp': 1790456943.796779}
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:01.680675651-03:00 Leitura recebida para temperatura: 50.31 na máquina 'maquina-2'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:02.401547027-03:00 Leitura recebida para vibracao: 2.23 na máquina 'maquina-1'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:02.826938651-03:00 Leitura recebida para temperatura: 98.25 na máquina 'maquina-2'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:02.827798365-03:00 ALERTA! Alta temperatura detectada: 98.25 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 98.25, 'timestamp': 1790456942.2376223}
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:03.297253949-03:00 Leitura recebida para temperatura: 54.07 na máquina 'maquina-4'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:03.674869076-03:00 Leitura recebida para co2: 401.26 na máquina 'maquina-1'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:04.137806258-03:00 Leitura recebida para temperatura: 73.68 na máquina 'maquina-8'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:03.058964362-03:00 Leitura recebida para temperatura: 20.54 na máquina 'maquina-5'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:03.998337515-03:00 Leitura recebida para vibracao: 1.05 na máquina 'maquina-7'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.473500601-03:00 Leitura recebida para temperatura: 82.14 na máquina 'maquina-2'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.474707037-03:00 ALERTA! Alta temperatura detectada: 82.14 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 82.14, 'timestamp': 1790456944.3058314}
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477045257-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477058853-03:00 
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477060797-03:00 [CRÍTICO GLOBAL] MÁQUINA PROBLEMÁTICA DETECTADA: maquina-2
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477062330-03:00 Motivo: 8 alertas em menos de 7.0s (Compartilhado via Redis).
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477064143-03:00 Enviando comando de KILL para o controlador...
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477065456-03:00 
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.482001351-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.200:9092<-34890]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.52', 34890), raddr=('10.42.0.200', 9092)>
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.482029886-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.200:9092<-34890] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:09:01.911838673-03:00 Leitura recebida para temperatura: 76.09 na máquina 'maquina-7'
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:09:02.033803192-03:00 Leitura recebida para temperatura: 84.09 na máquina 'maquina-8'
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:09:02.034836127-03:00 ALERTA! Alta temperatura detectada: 84.09 (Limite: 80.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'temperatura': 84.09, 'timestamp': 1790456941.8102937}
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:09:04.033169396-03:00 Leitura recebida para vibracao: 2.66 na máquina 'maquina-3'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:01.603034308-03:00 Leitura recebida para vibracao: 2.75 na máquina 'maquina-4'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:03.132908848-03:00 Leitura recebida para energia: 103.33 na máquina 'maquina-5'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:03.596889215-03:00 Leitura recebida para temperatura: 72.11 na máquina 'maquina-4'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:03.882701325-03:00 Leitura recebida para temperatura: 42.84 na máquina 'maquina-3'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:04.051401300-03:00 Leitura recebida para temperatura: 58.97 na máquina 'maquina-2'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:04.230054637-03:00 Leitura recebida para energia: 436.11 na máquina 'maquina-8'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:04.231256174-03:00 ALERTA! Alta energia detectada: 436.11 (Limite: 350.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'energia': 436.11, 'timestamp': 1790456943.8378847}
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:01.876792102-03:00 Leitura recebida para temperatura: 50.6 na máquina 'maquina-2'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:02.044728970-03:00 Leitura recebida para temperatura: 70.4 na máquina 'maquina-5'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:02.622133199-03:00 Leitura recebida para temperatura: 24.12 na máquina 'maquina-1'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.145032536-03:00 Leitura recebida para vibracao: 1.62 na máquina 'maquina-5'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.482000945-03:00 Leitura recebida para vibracao: 4.57 na máquina 'maquina-8'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.483056773-03:00 ALERTA! Alta vibracao detectada: 4.57 (Limite: 3.5) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'vibracao': 4.57, 'timestamp': 1790456943.334422}
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.600550685-03:00 Leitura recebida para energia: 369.18 na máquina 'maquina-1'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.674011677-03:00 ALERTA! Alta energia detectada: 369.18 (Limite: 350.0) na máquina 'maquina-1' - Dados: {'maquina_id': 'maquina-1', 'energia': 369.18, 'timestamp': 1790456943.4829438}
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:04.111170366-03:00 Leitura recebida para temperatura: 84.87 na máquina 'maquina-5'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:04.111782106-03:00 ALERTA! Alta temperatura detectada: 84.87 (Limite: 80.0) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'temperatura': 84.87, 'timestamp': 1790456943.9414074}
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:01.563101014-03:00 Leitura recebida para temperatura: 30.14 na máquina 'maquina-4'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:02.984432475-03:00 Leitura recebida para energia: 211.54 na máquina 'maquina-2'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:03.186784205-03:00 Leitura recebida para vibracao: 3.86 na máquina 'maquina-2'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:03.187698514-03:00 ALERTA! Alta vibracao detectada: 3.86 (Limite: 3.5) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'vibracao': 3.86, 'timestamp': 1790456942.8930993}
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:03.683490848-03:00 Leitura recebida para energia: 380.37 na máquina 'maquina-4'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:03.684337627-03:00 ALERTA! Alta energia detectada: 380.37 (Limite: 350.0) na máquina 'maquina-4' - Dados: {'maquina_id': 'maquina-4', 'energia': 380.37, 'timestamp': 1790456943.4820402}
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:01.813551630-03:00 Leitura recebida para vibracao: 2.32 na máquina 'maquina-5'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:02.207323334-03:00 Leitura recebida para energia: 159.98 na máquina 'maquina-8'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:03.239564429-03:00 Leitura recebida para temperatura: 35.28 na máquina 'maquina-7'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:03.720893614-03:00 Leitura recebida para temperatura: 29.22 na máquina 'maquina-2'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:04.188308657-03:00 Leitura recebida para temperatura: 82.52 na máquina 'maquina-2'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:04.189250247-03:00 ALERTA! Alta temperatura detectada: 82.52 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 82.52, 'timestamp': 1790456943.2952824}
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:04.482954734-03:00 Leitura recebida para temperatura: 45.85 na máquina 'maquina-1'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:09:02.614154896-03:00 Leitura recebida para vibracao: 1.62 na máquina 'maquina-7'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:09:03.125063761-03:00 Leitura recebida para energia: 101.52 na máquina 'maquina-7'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:09:03.635042886-03:00 Leitura recebida para vibracao: 1.49 na máquina 'maquina-4'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:09:04.149914135-03:00 Leitura recebida para vibracao: 0.72 na máquina 'maquina-1'
+[2026-09-26 18:09:04] ✅ Falha injetada e evidências salvas em: logs/failover_broker_20260926_180852.log
+O que observar:
+1. No DEPOIS, o tópico ainda tem líder para todas as partições (Leader diferente de -1) e o Isr foi reduzido.
+2. O total de leituras no banco continua aumentando entre ANTES e DEPOIS.
+3. O Kubernetes recria o kafka-0. Acompanhe com: kubectl get pods -l app=kafka -w
+Se algum comando acima falhou ou estourou o tempo limite, isso também é resultado do teste e está registrado no log.
+[2026-09-26 18:09:04] Entrando no painel dinâmico. Monitorando o failover por 20 segundos...
+[H[2J[3J
+=================== MONITORAMENTO DO KAFKA - Coletando amostra 1/5 ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          9s    10.42.0.76    distr   <none>           <none>
+kafka-1   1/1     Running   0          12m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          12m   10.42.0.202   distr   <none>           <none>
+[H[2J[3J
+=================== MONITORAMENTO DO KAFKA - Coletando amostra 2/5 ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          13s   10.42.0.76    distr   <none>           <none>
+kafka-1   1/1     Running   0          12m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          12m   10.42.0.202   distr   <none>           <none>
+[H[2J[3J
+=================== MONITORAMENTO DO KAFKA - Coletando amostra 3/5 ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          17s   10.42.0.76    distr   <none>           <none>
+kafka-1   1/1     Running   0          12m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          12m   10.42.0.202   distr   <none>           <none>
+[H[2J[3J
+=================== MONITORAMENTO DO KAFKA - Coletando amostra 4/5 ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          21s   10.42.0.76    distr   <none>           <none>
+kafka-1   1/1     Running   0          12m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          12m   10.42.0.202   distr   <none>           <none>
+[H[2J[3J
+=================== MONITORAMENTO DO KAFKA - Coletando amostra 5/5 ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          25s   10.42.0.76    distr   <none>           <none>
+kafka-1   1/1     Running   0          12m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          12m   10.42.0.202   distr   <none>           <none>
+[H[2J[3J
+=================== Fase 4: Auditoria de Dados no Banco ===================
+Digite um número (1-7) para executar uma Query Analítica, ou [ENTER] para finalizar:
+  1. Auditoria Geral (Últimos Eventos)
+  2. Ações Críticas (Infraestrutura Auto-Curada)
+  3. Média de Temperatura (Por Minuto)
+  4. Ranking dos Sensores (Mais Alertas)
+  5. Distribuição de Alertas (Por Máquina)
+  6. Estresse Máximo, Mínimo e Médio Absoluto
+  7. Volume de Eventos (Por Componente)
+----------------------------------------------------------
+
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -x -c SELECT timestamp, component_name, event_type, details FROM event_table ORDER BY timestamp DESC LIMIT 20;
+-[ RECORD 1 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.290836
+component_name | CONSUMIDOR
+event_type     | ALERT_TRIGGERED
+details        | {"valor": 967.84, "limite": 600.0, "sensor": "co2", "maquina_id": "maquina-5"}
+-[ RECORD 2 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.289929
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 967.84, "sensor": "co2", "maquina_id": "maquina-5"}
+-[ RECORD 3 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.230145
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 57.19, "sensor": "temperatura", "maquina_id": "maquina-2"}
+-[ RECORD 4 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.197615
+component_name | CONSUMIDOR
+event_type     | ALERT_TRIGGERED
+details        | {"valor": 409.48, "limite": 350.0, "sensor": "energia", "maquina_id": "maquina-2"}
+-[ RECORD 5 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.196879
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 409.48, "sensor": "energia", "maquina_id": "maquina-2"}
+-[ RECORD 6 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.193243
+component_name | CONSUMIDOR
+event_type     | ALERT_TRIGGERED
+details        | {"valor": 4.63, "limite": 3.5, "sensor": "vibracao", "maquina_id": "maquina-2"}
+-[ RECORD 7 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.192498
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 4.63, "sensor": "vibracao", "maquina_id": "maquina-2"}
+-[ RECORD 8 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.188577
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 60.73, "sensor": "temperatura", "maquina_id": "maquina-1"}
+-[ RECORD 9 ]--+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.079915
+component_name | CONSUMIDOR
+event_type     | ALERT_TRIGGERED
+details        | {"valor": 97.56, "limite": 80.0, "sensor": "temperatura", "maquina_id": "maquina-7"}
+-[ RECORD 10 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.078717
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 97.56, "sensor": "temperatura", "maquina_id": "maquina-7"}
+-[ RECORD 11 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.077846
+component_name | CONSUMIDOR
+event_type     | ALERT_TRIGGERED
+details        | {"valor": 419.79, "limite": 350.0, "sensor": "energia", "maquina_id": "maquina-1"}
+-[ RECORD 12 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.077081
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 419.79, "sensor": "energia", "maquina_id": "maquina-1"}
+-[ RECORD 13 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.071281
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 50.84, "sensor": "temperatura", "maquina_id": "maquina-5"}
+-[ RECORD 14 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.062084
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 243.02, "sensor": "energia", "maquina_id": "maquina-6"}
+-[ RECORD 15 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.016864
+component_name | CONSUMIDOR
+event_type     | ALERT_TRIGGERED
+details        | {"valor": 91.65, "limite": 80.0, "sensor": "temperatura", "maquina_id": "maquina-6"}
+-[ RECORD 16 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:32.016051
+component_name | CONSUMIDOR
+event_type     | PROCESS_DATA
+details        | {"valor": 91.65, "sensor": "temperatura", "maquina_id": "maquina-6"}
+-[ RECORD 17 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:31.9656
+component_name | PRODUTOR
+event_type     | SEND_DATA
+details        | {"timestamp": 1790456971.9651968, "maquina_id": "maquina-7", "temperatura": 97.56}
+-[ RECORD 18 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:31.941383
+component_name | PRODUTOR
+event_type     | SEND_DATA
+details        | {"co2": 542.92, "timestamp": 1790456971.832906, "maquina_id": "maquina-2"}
+-[ RECORD 19 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:31.9413
+component_name | PRODUTOR
+event_type     | SEND_DATA
+details        | {"vibracao": 4.65, "timestamp": 1790456971.9394395, "maquina_id": "maquina-8"}
+-[ RECORD 20 ]-+-------------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:31.940341
+component_name | PRODUTOR
+event_type     | SEND_DATA
+details        | {"energia": 409.48, "timestamp": 1790456971.832906, "maquina_id": "maquina-2"}
+
+
+[1;32mPressione [ENTER] para continuar...[0m
+[H[2J[3J
+=================== Fase 4: Auditoria de Dados no Banco ===================
+Digite um número (1-7) para executar uma Query Analítica, ou [ENTER] para finalizar:
+  1. Auditoria Geral (Últimos Eventos)
+  2. Ações Críticas (Infraestrutura Auto-Curada)
+  3. Média de Temperatura (Por Minuto)
+  4. Ranking dos Sensores (Mais Alertas)
+  5. Distribuição de Alertas (Por Máquina)
+  6. Estresse Máximo, Mínimo e Médio Absoluto
+  7. Volume de Eventos (Por Componente)
+----------------------------------------------------------
+
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -x -c SELECT timestamp, component_name, details FROM event_table WHERE event_type = 'MACHINE_KILLED' OR event_type = 'CRITICAL_ALERT_KILL_SENT' ORDER BY timestamp DESC LIMIT 20;
+-[ RECORD 1 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:39.784505
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-1-77968ccfff-bsf25", "maquina_id": "maquina-1"}
+-[ RECORD 2 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:39.575425
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-1"}
+-[ RECORD 3 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:37.881485
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-7-86ccb6fdc9-x7vtv", "maquina_id": "maquina-7"}
+-[ RECORD 4 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:37.770125
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-7"}
+-[ RECORD 5 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:28.043019
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-2-7c789dd7-kt872", "maquina_id": "maquina-2"}
+-[ RECORD 6 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:28.001663
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-2"}
+-[ RECORD 7 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:23.07579
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-5-8588486b75-dmwfx", "maquina_id": "maquina-5"}
+-[ RECORD 8 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:22.932847
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-5"}
+-[ RECORD 9 ]--+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:21.482386
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-2-7c789dd7-gv4rm", "maquina_id": "maquina-2"}
+-[ RECORD 10 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:21.406716
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-2"}
+-[ RECORD 11 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:20.59247
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-6-5557b8b79c-nlx7z", "maquina_id": "maquina-6"}
+-[ RECORD 12 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:20.462657
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-6"}
+-[ RECORD 13 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:18.87212
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-8-9954678b5-nr78s", "maquina_id": "maquina-8"}
+-[ RECORD 14 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:18.789027
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-8"}
+-[ RECORD 15 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:14.333871
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-5-8588486b75-slm2b", "maquina_id": "maquina-5"}
+-[ RECORD 16 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:14.223886
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-5"}
+-[ RECORD 17 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:12.044499
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-2-7c789dd7-p2j5d", "maquina_id": "maquina-2"}
+-[ RECORD 18 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:11.960034
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-2"}
+-[ RECORD 19 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:09.794678
+component_name | CONTROLADOR
+details        | {"pod_name": "producer-maquina-1-77968ccfff-6b8kf", "maquina_id": "maquina-1"}
+-[ RECORD 20 ]-+-------------------------------------------------------------------------------
+timestamp      | 2026-09-26 21:09:09.769986
+component_name | CONSUMIDOR
+details        | {"via": "redis", "maquina_id": "maquina-1"}
+
+
+[1;32mPressione [ENTER] para continuar...[0m
+[H[2J[3J
+=================== Fase 4: Auditoria de Dados no Banco ===================
+Digite um número (1-7) para executar uma Query Analítica, ou [ENTER] para finalizar:
+  1. Auditoria Geral (Últimos Eventos)
+  2. Ações Críticas (Infraestrutura Auto-Curada)
+  3. Média de Temperatura (Por Minuto)
+  4. Ranking dos Sensores (Mais Alertas)
+  5. Distribuição de Alertas (Por Máquina)
+  6. Estresse Máximo, Mínimo e Médio Absoluto
+  7. Volume de Eventos (Por Componente)
+----------------------------------------------------------
+
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c SELECT maquina_id, date_trunc('minute', timestamp) AS minuto, AVG(valor) AS temp_media FROM leituras_sensores WHERE tipo_sensor = 'temperatura' GROUP BY maquina_id, minuto ORDER BY minuto DESC LIMIT 20;
+ maquina_id |       minuto        |     temp_media      
+------------+---------------------+---------------------
+ maquina-1  | 2026-09-26 21:09:00 | 61.1168000000000000
+ maquina-2  | 2026-09-26 21:09:00 | 58.3262025316455696
+ maquina-3  | 2026-09-26 21:09:00 | 54.6842857142857143
+ maquina-4  | 2026-09-26 21:09:00 | 58.2741071428571429
+ maquina-5  | 2026-09-26 21:09:00 | 56.9012000000000000
+ maquina-6  | 2026-09-26 21:09:00 | 59.8184000000000000
+ maquina-7  | 2026-09-26 21:09:00 | 58.2588461538461538
+ maquina-8  | 2026-09-26 21:09:00 | 67.0057446808510638
+ maquina-1  | 2026-09-26 21:08:00 | 56.7000000000000000
+ maquina-2  | 2026-09-26 21:08:00 | 63.2135897435897436
+ maquina-3  | 2026-09-26 21:08:00 | 61.0837500000000000
+ maquina-4  | 2026-09-26 21:08:00 | 64.6135593220338983
+ maquina-5  | 2026-09-26 21:08:00 | 56.0829090909090909
+ maquina-6  | 2026-09-26 21:08:00 | 60.0333333333333333
+ maquina-7  | 2026-09-26 21:08:00 | 57.6677777777777778
+ maquina-8  | 2026-09-26 21:08:00 | 59.6906250000000000
+ maquina-1  | 2026-09-26 21:07:00 | 59.8903333333333333
+ maquina-2  | 2026-09-26 21:07:00 | 60.7420338983050847
+ maquina-3  | 2026-09-26 21:07:00 | 53.5137500000000000
+ maquina-4  | 2026-09-26 21:07:00 | 60.5356666666666667
+(20 rows)
+
+
+[1;32mPressione [ENTER] para continuar...[0m
+[H[2J[3J
+=================== Fase 4: Auditoria de Dados no Banco ===================
+Digite um número (1-7) para executar uma Query Analítica, ou [ENTER] para finalizar:
+  1. Auditoria Geral (Últimos Eventos)
+  2. Ações Críticas (Infraestrutura Auto-Curada)
+  3. Média de Temperatura (Por Minuto)
+  4. Ranking dos Sensores (Mais Alertas)
+  5. Distribuição de Alertas (Por Máquina)
+  6. Estresse Máximo, Mínimo e Médio Absoluto
+  7. Volume de Eventos (Por Componente)
+----------------------------------------------------------
+
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c SELECT tipo_sensor, COUNT(*) as total_alertas FROM leituras_sensores WHERE houve_alerta = true GROUP BY tipo_sensor ORDER BY total_alertas DESC LIMIT 20;
+ tipo_sensor | total_alertas 
+-------------+---------------
+ temperatura |          6641
+ energia     |          4453
+ vibracao    |          4033
+ co2         |          3044
+(4 rows)
+
+
+[1;32mPressione [ENTER] para continuar...[0m
+[H[2J[3J
+=================== Fase 4: Auditoria de Dados no Banco ===================
+Digite um número (1-7) para executar uma Query Analítica, ou [ENTER] para finalizar:
+  1. Auditoria Geral (Últimos Eventos)
+  2. Ações Críticas (Infraestrutura Auto-Curada)
+  3. Média de Temperatura (Por Minuto)
+  4. Ranking dos Sensores (Mais Alertas)
+  5. Distribuição de Alertas (Por Máquina)
+  6. Estresse Máximo, Mínimo e Médio Absoluto
+  7. Volume de Eventos (Por Componente)
+----------------------------------------------------------
+
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c SELECT maquina_id, tipo_sensor, COUNT(*) as total_alertas FROM leituras_sensores WHERE houve_alerta = true GROUP BY maquina_id, tipo_sensor ORDER BY total_alertas DESC LIMIT 20;
+ maquina_id | tipo_sensor | total_alertas 
+------------+-------------+---------------
+ maquina-2  | temperatura |          2902
+ maquina-2  | energia     |          1393
+ maquina-1  | temperatura |          1015
+ maquina-2  | co2         |           987
+ maquina-1  | vibracao    |           895
+ maquina-1  | energia     |           837
+ maquina-4  | temperatura |           753
+ maquina-2  | vibracao    |           703
+ maquina-5  | temperatura |           652
+ maquina-4  | energia     |           597
+ maquina-4  | vibracao    |           575
+ maquina-1  | co2         |           545
+ maquina-5  | vibracao    |           508
+ maquina-5  | energia     |           491
+ maquina-3  | vibracao    |           402
+ maquina-6  | temperatura |           384
+ maquina-8  | temperatura |           365
+ maquina-4  | co2         |           353
+ maquina-7  | temperatura |           335
+ maquina-5  | co2         |           327
+(20 rows)
+
+
+[1;32mPressione [ENTER] para continuar...[0m
+[H[2J[3J
+=================== Fase 4: Auditoria de Dados no Banco ===================
+Digite um número (1-7) para executar uma Query Analítica, ou [ENTER] para finalizar:
+  1. Auditoria Geral (Últimos Eventos)
+  2. Ações Críticas (Infraestrutura Auto-Curada)
+  3. Média de Temperatura (Por Minuto)
+  4. Ranking dos Sensores (Mais Alertas)
+  5. Distribuição de Alertas (Por Máquina)
+  6. Estresse Máximo, Mínimo e Médio Absoluto
+  7. Volume de Eventos (Por Componente)
+----------------------------------------------------------
+
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c SELECT maquina_id, tipo_sensor, MAX(valor) AS pico_maximo, MIN(valor) AS minimo, ROUND(AVG(valor), 2) AS media, COUNT(*) FILTER (WHERE houve_alerta = true) AS total_alertas FROM leituras_sensores GROUP BY maquina_id, tipo_sensor ORDER BY maquina_id, tipo_sensor LIMIT 20;
+ maquina_id | tipo_sensor | pico_maximo | minimo | media  | total_alertas 
+------------+-------------+-------------+--------+--------+---------------
+ maquina-1  | co2         |      999.10 | 300.55 | 653.08 |           545
+ maquina-1  | energia     |      499.90 | 100.31 | 299.65 |           840
+ maquina-1  | temperatura |      100.00 |  20.01 |  59.36 |          1016
+ maquina-1  | vibracao    |        5.00 |   0.10 |   2.54 |           897
+ maquina-10 | co2         |      996.60 | 318.17 | 645.95 |            22
+ maquina-10 | energia     |      490.65 | 102.70 | 316.30 |            47
+ maquina-10 | temperatura |       99.82 |  20.65 |  60.04 |            54
+ maquina-10 | vibracao    |        5.00 |   0.10 |   2.46 |            37
+ maquina-2  | co2         |      999.76 | 300.02 | 647.11 |           988
+ maquina-2  | energia     |      499.97 | 100.13 | 299.24 |          1396
+ maquina-2  | temperatura |       99.97 |  20.00 |  60.12 |          2904
+ maquina-2  | vibracao    |        5.00 |   0.10 |   2.55 |           703
+ maquina-3  | co2         |      998.71 | 302.10 | 630.00 |           214
+ maquina-3  | energia     |      499.15 | 101.48 | 303.83 |           197
+ maquina-3  | temperatura |       99.98 |  20.11 |  59.95 |           159
+ maquina-3  | vibracao    |        5.00 |   0.10 |   2.60 |           403
+ maquina-4  | co2         |      998.99 | 300.55 | 632.72 |           353
+ maquina-4  | energia     |      499.91 | 100.27 | 302.36 |           601
+ maquina-4  | temperatura |       99.98 |  20.04 |  60.37 |           755
+ maquina-4  | vibracao    |        5.00 |   0.11 |   2.50 |           577
+(20 rows)
+
+
+[1;32mPressione [ENTER] para continuar...[0m
+[H[2J[3J
+=================== Fase 4: Auditoria de Dados no Banco ===================
+Digite um número (1-7) para executar uma Query Analítica, ou [ENTER] para finalizar:
+  1. Auditoria Geral (Últimos Eventos)
+  2. Ações Críticas (Infraestrutura Auto-Curada)
+  3. Média de Temperatura (Por Minuto)
+  4. Ranking dos Sensores (Mais Alertas)
+  5. Distribuição de Alertas (Por Máquina)
+  6. Estresse Máximo, Mínimo e Médio Absoluto
+  7. Volume de Eventos (Por Componente)
+----------------------------------------------------------
+
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -P pager=off -c SELECT component_name, event_type, COUNT(*) as volume FROM event_table GROUP BY component_name, event_type ORDER BY volume DESC LIMIT 20;
+ component_name |        event_type        | volume 
+----------------+--------------------------+--------
+ PRODUTOR       | SEND_DATA                |  63975
+ CONSUMIDOR     | PROCESS_DATA             |  58102
+ CONSUMIDOR     | ALERT_TRIGGERED          |  18307
+ PRODUTOR       | START                    |   1551
+ CONSUMIDOR     | CRITICAL_ALERT_KILL_SENT |   1475
+ CONTROLADOR    | MACHINE_KILLED           |   1183
+ CONSUMIDOR     | START                    |    154
+ CONTROLADOR    | START                    |     43
+ CONTROLADOR    | KILL_ERROR               |      1
+(9 rows)
+
+
+[1;32mPressione [ENTER] para continuar...[0m
+[H[2J[3J
+=================== Fase 4: Auditoria de Dados no Banco ===================
+Digite um número (1-7) para executar uma Query Analítica, ou [ENTER] para finalizar:
+  1. Auditoria Geral (Últimos Eventos)
+  2. Ações Críticas (Infraestrutura Auto-Curada)
+  3. Média de Temperatura (Por Minuto)
+  4. Ranking dos Sensores (Mais Alertas)
+  5. Distribuição de Alertas (Por Máquina)
+  6. Estresse Máximo, Mínimo e Médio Absoluto
+  7. Volume de Eventos (Por Componente)
+----------------------------------------------------------
+
+[H[2J[3J
+=================== Fase 5: Cleanup Automático ===================
+[2026-09-26 18:10:38] Restaurando a arquitetura ao seu estado pacífico padrão (Produtores=3, Consumidores=3)...
+$ make scale-producers MACHINES=3
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+Criando novas máquinas (deployments) se não existirem (Total desejado: 3)...
+Garantindo que existem 3 máquinas (deployments)...
+Máquina 1 já existe.
+Máquina 2 já existe.
+Máquina 3 já existe.
+Verificando se há máquinas excedentes para remover...
+Removendo máquina excedente: producer-maquina-4...
+deployment.apps "producer-maquina-4" deleted from default namespace
+Removendo máquina excedente: producer-maquina-5...
+deployment.apps "producer-maquina-5" deleted from default namespace
+Removendo máquina excedente: producer-maquina-6...
+deployment.apps "producer-maquina-6" deleted from default namespace
+Removendo máquina excedente: producer-maquina-7...
+deployment.apps "producer-maquina-7" deleted from default namespace
+Removendo máquina excedente: producer-maquina-8...
+deployment.apps "producer-maquina-8" deleted from default namespace
+Concluído!
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+$ make scale-consumers C_REPLICAS=3
+make[1]: Entering directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+Escalando o grupo de consumidores extras para 3 instâncias rápidas para acelerar o processamento...
+Ajustando para 3 consumidores (3 base, 0 extras rápidas)...
+deployment.apps/consumer scaled
+Verificando se há consumidores extras excedentes para remover...
+Removendo consumidor extra excedente: consumer-extra-1...
+deployment.apps "consumer-extra-1" deleted from default namespace
+Removendo consumidor extra excedente: consumer-extra-2...
+deployment.apps "consumer-extra-2" deleted from default namespace
+Removendo consumidor extra excedente: consumer-extra-3...
+deployment.apps "consumer-extra-3" deleted from default namespace
+Removendo consumidor extra excedente: consumer-extra-4...
+deployment.apps "consumer-extra-4" deleted from default namespace
+Removendo consumidor extra excedente: consumer-extra-5...
+deployment.apps "consumer-extra-5" deleted from default namespace
+Removendo consumidor extra excedente: consumer-extra-6...
+deployment.apps "consumer-extra-6" deleted from default namespace
+Removendo consumidor extra excedente: consumer-extra-7...
+deployment.apps "consumer-extra-7" deleted from default namespace
+Removendo consumidor extra excedente: consumer-extra-8...
+deployment.apps "consumer-extra-8" deleted from default namespace
+Removendo consumidor extra excedente: consumer-extra-9...
+deployment.apps "consumer-extra-9" deleted from default namespace
+Concluído!
+make[1]: Leaving directory '/home/eugenio/Desktop/projetos/inf1304-trab1'
+
+[2026-09-26 18:10:42] 🎉 Validação Arquitetural Finalizada com Sucesso! 🎉

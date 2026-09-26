@@ -96,7 +96,7 @@ spec:
         - name: GENERATION_INTERVAL
           value: "0.5" # Produz 2x mais rápido
         - name: MULTIPLICADOR_TEMPERATURA
-          value: "0.5" # Máquina mais fria
+          value: "1.0" # Máquina mais fria
         - name: MULTIPLICADOR_VIBRACAO
           value: "3.5" # Muita vibração!
 

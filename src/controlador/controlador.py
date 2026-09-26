@@ -17,6 +17,16 @@ import psycopg2
 from kafka import KafkaConsumer
 from kubernetes import client, config as k8s_config
 
+import signal
+
+def tratar_sigterm(signum, frame):
+    """Garante que o SIGTERM do Kubernetes caia no fluxo de encerramento."""
+    print("Sinal SIGTERM recebido do Kubernetes. Iniciando desligamento gracioso...")
+    raise KeyboardInterrupt  # Dispara a sua cláusula try/except existente
+
+# Registra o gatilho
+signal.signal(signal.SIGTERM, tratar_sigterm)
+
 def obter_configuracao():
     """
     Recupera a configuração do controlador a partir de variáveis de ambiente.

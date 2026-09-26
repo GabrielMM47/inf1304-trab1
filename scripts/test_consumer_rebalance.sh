@@ -8,7 +8,7 @@
 #   (demais variáveis: ver scripts/lib_logs.sh)
 
 source "$(dirname "$0")/lib_logs.sh"
-ESPERA_REBALANCE_SEG="${ESPERA_REBALANCE_SEG:-20}"
+ESPERA_REBALANCE_SEG="${ESPERA_REBALANCE_SEG:-2}"
 
 log_init "rebalanco_consumidor"
 
@@ -43,7 +43,7 @@ log_cmd kubectl get pods -l app=consumer -o wide
 kafka_describe_group
 
 log_section "LOGS DOS CONSUMIDORES EM EXECUÇÃO (últimas $LOG_TAIL_LINHAS linhas de cada)"
-log_cmd kubectl logs -l app=consumer --prefix --timestamps --tail="$LOG_TAIL_LINHAS" --max-log-requests=10
+log_cmd kubectl logs -l app=consumer --prefix --timestamps --since=3s --tail="$LOG_TAIL_LINHAS" --max-log-requests=10
 
 log_msg "✅ Falha injetada e evidências salvas em: $LOG_FILE"
 echo "O que observar:"

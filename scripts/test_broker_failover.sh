@@ -12,7 +12,7 @@
 # líder/ISR das partições, LAG do grupo, contagem de leituras no banco e logs dos consumidores.
 
 source "$(dirname "$0")/lib_logs.sh"
-ESPERA_FAILOVER_SEG="${ESPERA_FAILOVER_SEG:-30}"
+ESPERA_FAILOVER_SEG="${ESPERA_FAILOVER_SEG:-3}"
 
 log_init "failover_broker"
 

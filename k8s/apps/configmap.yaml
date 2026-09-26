@@ -35,7 +35,7 @@ data:
   KAFKA_TOPIC_COMANDOS: "comandos-fabrica"
   KAFKA_GROUP_ID: "sensor-group"
   JANELA_ANALISE_SEG: "7.0"
-  MAX_ALERTAS_JANELA: "5"
+  MAX_ALERTAS_JANELA: "8"
   TEMPO_PROCESSAMENTO_MIN_SEG: "0.2"
   TEMPO_PROCESSAMENTO_MAX_SEG: "0.5"
   PERFIL_LIMITES: "normal"
@@ -72,7 +72,7 @@ data:
   KAFKA_TOPIC_COMANDOS: "comandos-fabrica"
   KAFKA_GROUP_ID: "sensor-group"
   JANELA_ANALISE_SEG: "7.0"
-  MAX_ALERTAS_JANELA: "5"
+  MAX_ALERTAS_JANELA: "8"
   TEMPO_PROCESSAMENTO_MIN_SEG: "0.1" # Fast processing for extra consumers
   TEMPO_PROCESSAMENTO_MAX_SEG: "0.2"
   PERFIL_LIMITES: "normal"

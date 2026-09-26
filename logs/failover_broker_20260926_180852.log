@@ -1,0 +1,180 @@
+[2026-09-26 18:08:52] Início do teste 'failover_broker'. Arquivo de log: logs/failover_broker_20260926_180852.log
+==========================================================
+🔥 INJETANDO FALHA: DERRUBANDO UM BROKER KAFKA 🔥
+==========================================================
+
+=================== ANTES: brokers, partições (líder/réplicas/ISR), grupo de consumo e banco ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          7m    10.42.0.4     distr   <none>           <none>
+kafka-1   1/1     Running   0          11m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          11m   10.42.0.202   distr   <none>           <none>
+$ kubectl exec kafka-0 -- kafka-topics --bootstrap-server localhost:9092 --describe --topic dados-sensores
+Topic: dados-sensores	TopicId: kIckwMYZTSu5FnnFCe-6Cw	PartitionCount: 12	ReplicationFactor: 3	Configs: min.insync.replicas=1
+	Topic: dados-sensores	Partition: 0	Leader: 2	Replicas: 2,0,1	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 1	Leader: 0	Replicas: 0,1,2	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 2	Leader: 1	Replicas: 1,2,0	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 3	Leader: 1	Replicas: 1,2,0	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 4	Leader: 2	Replicas: 2,0,1	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 5	Leader: 0	Replicas: 0,1,2	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 6	Leader: 2	Replicas: 2,1,0	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 7	Leader: 1	Replicas: 1,0,2	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 8	Leader: 0	Replicas: 0,2,1	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 9	Leader: 0	Replicas: 0,1,2	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 10	Leader: 1	Replicas: 1,2,0	Isr: 0,1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 11	Leader: 2	Replicas: 2,0,1	Isr: 0,1,2	Elr: 	LastKnownElr: 
+$ kubectl exec kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          644             644             0               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          633             633             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          628             629             1               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          615             615             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          608             608             0               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         631             632             1               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         579             579             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          600             600             0               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          595             596             1               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          598             599             1               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          573             573             0               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          605             608             3               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -tA -c SELECT now() AS momento, count(*) AS total_leituras FROM leituras_sensores;
+2026-09-26 21:08:56.122977+00|56573
+
+=================== FALHA: deletando à força o broker kafka-0 ===================
+[2026-09-26 18:08:56] 💀 Alvo travado: kafka-0
+[2026-09-26 18:08:56] Executando deleção forçada (simulando perda de energia ou kernel panic)...
+$ kubectl delete pod kafka-0 --force --grace-period=0
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "kafka-0" force deleted from default namespace
+[2026-09-26 18:08:56] Aguardando 3s para o cluster reagir...
+
+=================== DEPOIS: consultas feitas no broker sobrevivente (evitando kafka-0) ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          3s    10.42.0.76    distr   <none>           <none>
+kafka-1   1/1     Running   0          12m   10.42.0.200   distr   <none>           <none>
+kafka-2   1/1     Running   0          12m   10.42.0.202   distr   <none>           <none>
+$ kubectl exec kafka-1 -- kafka-topics --bootstrap-server localhost:9092 --describe --topic dados-sensores
+Topic: dados-sensores	TopicId: kIckwMYZTSu5FnnFCe-6Cw	PartitionCount: 12	ReplicationFactor: 3	Configs: min.insync.replicas=1
+	Topic: dados-sensores	Partition: 0	Leader: 2	Replicas: 2,0,1	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 1	Leader: 1	Replicas: 0,1,2	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 2	Leader: 1	Replicas: 1,2,0	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 3	Leader: 1	Replicas: 1,2,0	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 4	Leader: 2	Replicas: 2,0,1	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 5	Leader: 1	Replicas: 0,1,2	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 6	Leader: 2	Replicas: 2,1,0	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 7	Leader: 1	Replicas: 1,0,2	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 8	Leader: 2	Replicas: 0,2,1	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 9	Leader: 1	Replicas: 0,1,2	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 10	Leader: 1	Replicas: 1,2,0	Isr: 1,2	Elr: 	LastKnownElr: 
+	Topic: dados-sensores	Partition: 11	Leader: 2	Replicas: 2,0,1	Isr: 1,2	Elr: 	LastKnownElr: 
+$ kubectl exec kafka-1 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  5          658             661             3               kafka-python-3.0.11-52465bc3-bd7a-4dce-b122-f300b2487a59 /10.42.0.56     kafka-python-3.0.11
+sensor-group    dados-sensores  9          649             649             0               kafka-python-3.0.11-9e871cb3-878a-407d-bffa-84ac6e65f1b2 /10.42.0.51     kafka-python-3.0.11
+sensor-group    dados-sensores  7          636             637             1               kafka-python-3.0.11-81c47be7-dbe2-4e34-9a2c-6876f642c87d /10.42.0.55     kafka-python-3.0.11
+sensor-group    dados-sensores  8          624             624             0               kafka-python-3.0.11-9a09b3a5-8d56-4560-b673-7ac7a07cf4d0 /10.42.0.54     kafka-python-3.0.11
+sensor-group    dados-sensores  1          614             615             1               kafka-python-3.0.11-396e4259-4013-4636-a48b-f9b8f4b01574 /10.42.0.50     kafka-python-3.0.11
+sensor-group    dados-sensores  10         641             641             0               kafka-python-3.0.11-e37b077b-7d29-4107-8dde-1fdf5223689f /10.42.0.53     kafka-python-3.0.11
+sensor-group    dados-sensores  11         588             588             0               kafka-python-3.0.11-efe5a668-7df1-454e-b006-211b13dba56a /10.42.0.58     kafka-python-3.0.11
+sensor-group    dados-sensores  2          607             608             1               kafka-python-3.0.11-3cbe975b-f980-4af9-a933-6dabe15cf4df /10.42.0.201    kafka-python-3.0.11
+sensor-group    dados-sensores  0          603             604             1               kafka-python-3.0.11-29a5eee0-31ec-4a0d-bb07-8ee43cebac55 /10.42.0.52     kafka-python-3.0.11
+sensor-group    dados-sensores  6          615             615             0               kafka-python-3.0.11-5f0da82f-a65d-4b13-8992-a0e3d6655fde /10.42.0.57     kafka-python-3.0.11
+sensor-group    dados-sensores  4          591             593             2               kafka-python-3.0.11-4e1f5da1-e31a-4afe-95b5-9866662bf6f9 /10.42.0.65     kafka-python-3.0.11
+sensor-group    dados-sensores  3          619             622             3               kafka-python-3.0.11-465b599e-8937-477e-8d14-f0d078ca55de /10.42.0.245    kafka-python-3.0.11
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -tA -c SELECT now() AS momento, count(*) AS total_leituras FROM leituras_sensores;
+2026-09-26 21:09:04.374341+00|56706
+
+=================== LOGS DOS CONSUMIDORES NA JANELA DA FALHA (últimos 3s) ===================
+$ kubectl logs -l app=consumer --prefix --timestamps --since=3s --tail=30 --max-log-requests=10
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+Defaulted container "consumer" out of: consumer, wait-for-kafka (init)
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:09:02.954593780-03:00 Leitura recebida para co2: 905.12 na máquina 'maquina-5'
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:09:02.955773856-03:00 ALERTA! Alta co2 detectada: 905.12 (Limite: 600.0) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'co2': 905.12, 'timestamp': 1790456942.829245}
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:09:03.974015988-03:00 Leitura recebida para energia: 496.96 na máquina 'maquina-2'
+[pod/consumer-extra-1-76c8896bdf-t46x2/consumer] 2026-09-26T18:09:03.974798624-03:00 ALERTA! Alta energia detectada: 496.96 (Limite: 350.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'energia': 496.96, 'timestamp': 1790456943.798811}
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:01.533878097-03:00 Leitura recebida para energia: 477.73 na máquina 'maquina-4'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:01.538366436-03:00 ALERTA! Alta energia detectada: 477.73 (Limite: 350.0) na máquina 'maquina-4' - Dados: {'maquina_id': 'maquina-4', 'energia': 477.73, 'timestamp': 1790456941.4013245}
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:01.670205604-03:00 Leitura recebida para temperatura: 29.27 na máquina 'maquina-1'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:01.852495702-03:00 Leitura recebida para energia: 319.1 na máquina 'maquina-1'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:02.054587919-03:00 Leitura recebida para vibracao: 0.97 na máquina 'maquina-8'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:02.217828117-03:00 Leitura recebida para co2: 976.31 na máquina 'maquina-8'
+[pod/consumer-extra-2-64c7787d8b-dgq45/consumer] 2026-09-26T18:09:02.287775752-03:00 ALERTA! Alta co2 detectada: 976.31 (Limite: 600.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'co2': 976.31, 'timestamp': 1790456941.8102937}
+[pod/consumer-extra-5-59f7fdc5b9-gcc77/consumer] 2026-09-26T18:09:01.866917934-03:00 Leitura recebida para energia: 197.3 na máquina 'maquina-2'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:09:03.999294033-03:00 Leitura recebida para temperatura: 90.19 na máquina 'maquina-7'
+[pod/consumer-extra-6-ffb7dbb6b-srrtm/consumer] 2026-09-26T18:09:04.000151714-03:00 ALERTA! Alta temperatura detectada: 90.19 (Limite: 80.0) na máquina 'maquina-7' - Dados: {'maquina_id': 'maquina-7', 'temperatura': 90.19, 'timestamp': 1790456943.796779}
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:01.680675651-03:00 Leitura recebida para temperatura: 50.31 na máquina 'maquina-2'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:02.401547027-03:00 Leitura recebida para vibracao: 2.23 na máquina 'maquina-1'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:02.826938651-03:00 Leitura recebida para temperatura: 98.25 na máquina 'maquina-2'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:02.827798365-03:00 ALERTA! Alta temperatura detectada: 98.25 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 98.25, 'timestamp': 1790456942.2376223}
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:03.297253949-03:00 Leitura recebida para temperatura: 54.07 na máquina 'maquina-4'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:03.674869076-03:00 Leitura recebida para co2: 401.26 na máquina 'maquina-1'
+[pod/consumer-54f7bcd85b-2n24r/consumer] 2026-09-26T18:09:04.137806258-03:00 Leitura recebida para temperatura: 73.68 na máquina 'maquina-8'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:03.058964362-03:00 Leitura recebida para temperatura: 20.54 na máquina 'maquina-5'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:03.998337515-03:00 Leitura recebida para vibracao: 1.05 na máquina 'maquina-7'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.473500601-03:00 Leitura recebida para temperatura: 82.14 na máquina 'maquina-2'
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.474707037-03:00 ALERTA! Alta temperatura detectada: 82.14 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 82.14, 'timestamp': 1790456944.3058314}
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477045257-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477058853-03:00 
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477060797-03:00 [CRÍTICO GLOBAL] MÁQUINA PROBLEMÁTICA DETECTADA: maquina-2
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477062330-03:00 Motivo: 8 alertas em menos de 7.0s (Compartilhado via Redis).
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477064143-03:00 Enviando comando de KILL para o controlador...
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.477065456-03:00 
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.482001351-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.200:9092<-34890]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.52', 34890), raddr=('10.42.0.200', 9092)>
+[pod/consumer-extra-3-766c54c4c9-dcrzh/consumer] 2026-09-26T18:09:04.482029886-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.200:9092<-34890] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:09:01.911838673-03:00 Leitura recebida para temperatura: 76.09 na máquina 'maquina-7'
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:09:02.033803192-03:00 Leitura recebida para temperatura: 84.09 na máquina 'maquina-8'
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:09:02.034836127-03:00 ALERTA! Alta temperatura detectada: 84.09 (Limite: 80.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'temperatura': 84.09, 'timestamp': 1790456941.8102937}
+[pod/consumer-extra-4-6d795f8c6d-m6hs9/consumer] 2026-09-26T18:09:04.033169396-03:00 Leitura recebida para vibracao: 2.66 na máquina 'maquina-3'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:01.603034308-03:00 Leitura recebida para vibracao: 2.75 na máquina 'maquina-4'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:03.132908848-03:00 Leitura recebida para energia: 103.33 na máquina 'maquina-5'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:03.596889215-03:00 Leitura recebida para temperatura: 72.11 na máquina 'maquina-4'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:03.882701325-03:00 Leitura recebida para temperatura: 42.84 na máquina 'maquina-3'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:04.051401300-03:00 Leitura recebida para temperatura: 58.97 na máquina 'maquina-2'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:04.230054637-03:00 Leitura recebida para energia: 436.11 na máquina 'maquina-8'
+[pod/consumer-extra-7-7d69785f95-mrz8w/consumer] 2026-09-26T18:09:04.231256174-03:00 ALERTA! Alta energia detectada: 436.11 (Limite: 350.0) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'energia': 436.11, 'timestamp': 1790456943.8378847}
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:01.876792102-03:00 Leitura recebida para temperatura: 50.6 na máquina 'maquina-2'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:02.044728970-03:00 Leitura recebida para temperatura: 70.4 na máquina 'maquina-5'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:02.622133199-03:00 Leitura recebida para temperatura: 24.12 na máquina 'maquina-1'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.145032536-03:00 Leitura recebida para vibracao: 1.62 na máquina 'maquina-5'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.482000945-03:00 Leitura recebida para vibracao: 4.57 na máquina 'maquina-8'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.483056773-03:00 ALERTA! Alta vibracao detectada: 4.57 (Limite: 3.5) na máquina 'maquina-8' - Dados: {'maquina_id': 'maquina-8', 'vibracao': 4.57, 'timestamp': 1790456943.334422}
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.600550685-03:00 Leitura recebida para energia: 369.18 na máquina 'maquina-1'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:03.674011677-03:00 ALERTA! Alta energia detectada: 369.18 (Limite: 350.0) na máquina 'maquina-1' - Dados: {'maquina_id': 'maquina-1', 'energia': 369.18, 'timestamp': 1790456943.4829438}
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:04.111170366-03:00 Leitura recebida para temperatura: 84.87 na máquina 'maquina-5'
+[pod/consumer-extra-8-75f857c696-rqlr6/consumer] 2026-09-26T18:09:04.111782106-03:00 ALERTA! Alta temperatura detectada: 84.87 (Limite: 80.0) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'temperatura': 84.87, 'timestamp': 1790456943.9414074}
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:01.563101014-03:00 Leitura recebida para temperatura: 30.14 na máquina 'maquina-4'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:02.984432475-03:00 Leitura recebida para energia: 211.54 na máquina 'maquina-2'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:03.186784205-03:00 Leitura recebida para vibracao: 3.86 na máquina 'maquina-2'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:03.187698514-03:00 ALERTA! Alta vibracao detectada: 3.86 (Limite: 3.5) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'vibracao': 3.86, 'timestamp': 1790456942.8930993}
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:03.683490848-03:00 Leitura recebida para energia: 380.37 na máquina 'maquina-4'
+[pod/consumer-extra-9-64cdd57669-f75nv/consumer] 2026-09-26T18:09:03.684337627-03:00 ALERTA! Alta energia detectada: 380.37 (Limite: 350.0) na máquina 'maquina-4' - Dados: {'maquina_id': 'maquina-4', 'energia': 380.37, 'timestamp': 1790456943.4820402}
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:01.813551630-03:00 Leitura recebida para vibracao: 2.32 na máquina 'maquina-5'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:02.207323334-03:00 Leitura recebida para energia: 159.98 na máquina 'maquina-8'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:03.239564429-03:00 Leitura recebida para temperatura: 35.28 na máquina 'maquina-7'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:03.720893614-03:00 Leitura recebida para temperatura: 29.22 na máquina 'maquina-2'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:04.188308657-03:00 Leitura recebida para temperatura: 82.52 na máquina 'maquina-2'
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:04.189250247-03:00 ALERTA! Alta temperatura detectada: 82.52 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 82.52, 'timestamp': 1790456943.2952824}
+[pod/consumer-54f7bcd85b-ljvtz/consumer] 2026-09-26T18:09:04.482954734-03:00 Leitura recebida para temperatura: 45.85 na máquina 'maquina-1'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:09:02.614154896-03:00 Leitura recebida para vibracao: 1.62 na máquina 'maquina-7'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:09:03.125063761-03:00 Leitura recebida para energia: 101.52 na máquina 'maquina-7'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:09:03.635042886-03:00 Leitura recebida para vibracao: 1.49 na máquina 'maquina-4'
+[pod/consumer-54f7bcd85b-wsvlg/consumer] 2026-09-26T18:09:04.149914135-03:00 Leitura recebida para vibracao: 0.72 na máquina 'maquina-1'
+[2026-09-26 18:09:04] ✅ Falha injetada e evidências salvas em: logs/failover_broker_20260926_180852.log
+O que observar:
+1. No DEPOIS, o tópico ainda tem líder para todas as partições (Leader diferente de -1) e o Isr foi reduzido.
+2. O total de leituras no banco continua aumentando entre ANTES e DEPOIS.
+3. O Kubernetes recria o kafka-0. Acompanhe com: kubectl get pods -l app=kafka -w
+Se algum comando acima falhou ou estourou o tempo limite, isso também é resultado do teste e está registrado no log.

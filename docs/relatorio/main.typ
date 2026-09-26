@@ -1,4 +1,5 @@
 #import "funcoes.typ": *
+#set document(date: none)
 #set page(paper: "a4", margin: 2.5cm)
 #set text(font: ("Arial", "Roboto"), size: 12pt) 
 #set par(first-line-indent: (amount: 1.25cm, all: true), justify: true)

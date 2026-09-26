@@ -96,9 +96,9 @@ spec:
         - name: GENERATION_INTERVAL
           value: "0.5" # Produz 2x mais rápido
         - name: MULTIPLICADOR_TEMPERATURA
-          value: "1.0" # Máquina mais fria
+          value: "1.0" # Temperatura no mesmo intervalo base (a cada 0,5 s)
         - name: MULTIPLICADOR_VIBRACAO
-          value: "3.5" # Muita vibração!
+          value: "3.5" # Vibração enviada com menos frequência (a cada 1,75 s)
 
 ---
 apiVersion: apps/v1
@@ -150,6 +150,6 @@ spec:
         - name: GENERATION_INTERVAL
           value: "2.5" # Bem mais lenta
         - name: MULTIPLICADOR_TEMPERATURA
-          value: "3.0" # Super quente, gera anomalias!
+          value: "3.0" # Temperatura enviada com menos frequência (a cada 7,5 s)
         - name: MULTIPLICADOR_ENERGIA
-          value: "4.0" # Gasta muita energia
+          value: "4.0" # Energia enviada com menos frequência (a cada 10 s)

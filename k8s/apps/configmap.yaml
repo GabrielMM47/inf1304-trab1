@@ -73,7 +73,7 @@ data:
   KAFKA_GROUP_ID: "sensor-group"
   JANELA_ANALISE_SEG: "7.0"
   MAX_ALERTAS_JANELA: "8"
-  TEMPO_PROCESSAMENTO_MIN_SEG: "0.1" # Fast processing for extra consumers
+  TEMPO_PROCESSAMENTO_MIN_SEG: "0.1" # Consumidores extras processam mais rápido
   TEMPO_PROCESSAMENTO_MAX_SEG: "0.2"
   PERFIL_LIMITES: "normal"
   PG_HOST: "postgres"

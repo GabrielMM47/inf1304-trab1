@@ -159,11 +159,12 @@
 
 
 // -------------------------------------------------------------------
-// VALORES QUE DEPENDEM DOS ITENS 1 E 2 (replicação e número de brokers).
-// Atualizar aqui quando o cluster Kafka for corrigido; o texto usa estas variáveis.
+// VALORES DO CLUSTER KAFKA usados no texto (k8s/kafka/kafka-statefulset.yaml
+// e k8s/kafka/kafka-init-job.yaml). Atualizar aqui se os manifestos mudarem.
 // -------------------------------------------------------------------
-#let num-brokers = "dois"        // TODO(itens 1 e 2): "três" se o StatefulSet passar a ter 3 réplicas
-#let fator-replicacao = "1"      // TODO(item 1): fator de replicação do tópico `dados-sensores` após a correção
+#let num-brokers = "três"
+#let num-particoes = "seis"
+#let fator-replicacao = "3"
 
 = INTRODUÇÃO
 
@@ -201,7 +202,7 @@ O sistema é composto por cinco tipos de componentes, todos executados como pods
     [], [], [], [], caixa([Redis], [histórico de alertas], rgb("#fff8e1")), [], [],
     [], [], [], [], seta(sym.arrow.t.b), [], [],
     // fluxo principal de dados
-    caixa([Sensores], [3 Deployments \ `producer-maquina-N`], rgb("#e6f2ff")),
+    caixa([Sensores], [Deployments \ `producer-maquina-N`], rgb("#e6f2ff")),
     seta(sym.arrow.r),
     caixa([Kafka], [tópico \ `dados-sensores`], rgb("#fdebd9")),
     seta(sym.arrow.r),
@@ -231,8 +232,8 @@ O sistema é composto por cinco tipos de componentes, todos executados como pods
     fill: (_, row) => if row == 0 { rgb("#f5a371") } else { none },
     [*Componente*], [*Recurso Kubernetes*], [*Réplicas*], [*Função*],
     [Brokers Kafka], [StatefulSet `kafka`], [#num-brokers], [Armazenam e distribuem as mensagens dos tópicos],
-    [Sensores], [Deployments `producer-maquina-1` a `3`], [1 cada], [Geram medições periódicas e as publicam em `dados-sensores`],
-    [Consumidores], [Deployment `consumer`], [2], [Processam as medições, detectam anomalias e gravam no banco],
+    [Sensores], [Deployments `producer-maquina-N` (3 no início)], [1 cada], [Geram medições periódicas e as publicam em `dados-sensores`],
+    [Consumidores], [Deployment `consumer`], [3], [Processam as medições, detectam anomalias e gravam no banco],
     [Controlador], [Deployment `controlador`], [2], [Remove pods de máquinas problemáticas a pedido dos consumidores],
     [PostgreSQL], [StatefulSet `postgres`], [1], [Guarda leituras, alertas e eventos de auditoria],
     [Redis], [Deployment `redis`], [1], [Compartilha entre os consumidores o histórico de alertas por máquina],
@@ -248,21 +249,47 @@ O cluster Kafka é implantado como um StatefulSet que cria #num-brokers pods, um
 
 O cluster opera em modo KRaft, sem Zookeeper: cada pod exerce ao mesmo tempo os papéis de broker e de controller, e os controllers formam um quórum que mantém os metadados do cluster e conduz a eleição de líderes de partição. A configuração de cada broker é gerada na inicialização por um script (`setup-kraft.sh`), armazenado em um ConfigMap. O script deriva o identificador do nó a partir do nome do pod (`kafka-0` recebe o identificador 0), monta o arquivo de configuração com os listeners de cliente (porta 9092) e de controller (porta 9093) e formata o armazenamento com o identificador do cluster. Esse identificador, um UUID compartilhado por todos os brokers, é lido da variável `KAFKA_CLUSTER_ID`, definida em um ConfigMap; ele precisa ser o mesmo em todos os nós e só deve mudar quando o cluster é recriado do zero.
 
-Os tópicos `dados-sensores` e `comandos-fabrica` são criados por um Job do Kubernetes (`kafka-init-topics`) logo após a subida dos brokers, cada um com três partições. As partições permitem que a leitura de um mesmo tópico seja dividida entre vários consumidores do grupo. O fator de replicação atual dos tópicos é #fator-replicacao. // TODO(item 1): descrever a replicação definitiva e o efeito dela na tolerância à queda de um broker.
+Os tópicos `dados-sensores` e `comandos-fabrica` são criados por um Job do Kubernetes (`kafka-init-topics`) logo após a subida dos brokers, cada um com #num-particoes partições e fator de replicação #fator-replicacao. A criação automática de tópicos pelos brokers está desativada, para que os tópicos sempre tenham a configuração definida no Job, e o Job apaga e recria os dois tópicos a cada implantação, de modo que cada execução começa com os tópicos vazios. Os sensores e os consumidores só iniciam depois que o tópico `dados-sensores` existe: cada pod tem um contêiner de inicialização que aguarda o tópico aparecer na listagem do Kafka.
+
+As partições permitem que a leitura de um tópico seja dividida entre vários consumidores do grupo. A replicação é o que permite tolerar a queda de um broker: com fator de replicação #fator-replicacao, cada partição tem uma cópia em cada um dos #num-brokers brokers, sendo uma delas a líder, que atende produtores e consumidores, e as demais seguidoras, que se mantêm sincronizadas. Se o broker que lidera uma partição cai, o controller elege como nova líder uma das réplicas em sincronia que restaram. O quórum de controllers também tolera a perda de um nó, porque com três votantes a maioria necessária é de dois. Os tópicos internos do Kafka, como o que guarda as posições de leitura dos grupos de consumo, também usam fator de replicação 3, com no mínimo duas réplicas em sincronia.
+
+Os brokers não têm volume persistente: os dados ficam no sistema de arquivos do contêiner (`/tmp/kraft-logs`). Quando o pod de um broker é recriado, ele volta sem dados e precisa copiar das réplicas dos outros brokers as partições que lhe cabem.
 
 == Sensores (produtores)
 
-Os sensores são simulados por um programa em Python (`sensor.py`) empacotado em uma imagem Docker. Cada máquina da fábrica corresponde a um Deployment (`producer-maquina-1`, `-2` e `-3`), o que permite dar a cada uma um comportamento próprio por variáveis de ambiente: a `maquina-1` usa os intervalos de geração padrão, a `maquina-2` produz medições com uma frequência quatro vezes maior e com vibração elevada, e a `maquina-3` produz poucas medições, com temperatura e consumo de energia altos, o que tende a gerar anomalias.
+Os sensores são simulados por um programa em Python (`sensor.py`) empacotado em uma imagem Docker. Cada máquina da fábrica corresponde a um Deployment (`producer-maquina-1`, `-2` e `-3` na implantação inicial), o que permite dar a cada uma um ritmo próprio por variáveis de ambiente. Novas máquinas podem ser criadas durante a execução (ver @tab-comandos), cada uma com seu próprio Deployment.
 
-A cada intervalo, o sensor gera uma medição de um dos quatro tipos (temperatura, vibração, energia ou CO2) e a envia ao tópico `dados-sensores` como uma mensagem JSON contendo o identificador da máquina, o valor medido e um _timestamp_. O intervalo de cada tipo de sensor é o intervalo base multiplicado por um fator configurável. O identificador da máquina é usado como chave da mensagem, o que faz o Kafka enviar todas as mensagens de uma mesma máquina para a mesma partição e preserva a ordem entre elas.
+Cada máquina envia medições de quatro tipos (temperatura, vibração, energia e CO2), cada tipo em seu próprio intervalo, igual ao intervalo base da máquina multiplicado por um fator configurável por tipo. Cada medição é enviada ao tópico `dados-sensores` como uma mensagem JSON contendo o identificador da máquina, o valor medido e um _timestamp_. Os valores são sorteados em faixas fixas por tipo de sensor, iguais para todas as máquinas; o que diferencia as máquinas é apenas a frequência de envio, conforme a @tab-intervalos.
+
+#figure(
+  [
+  #set par(justify: false, first-line-indent: 0pt)
+  #set text(size: 10pt)
+  #table(
+    columns: (3cm, 2.6cm, 1fr, 1fr, 1fr, 1fr),
+    align: (left, center, center, center, center, center),
+    stroke: 0.5pt + luma(150),
+    fill: (_, row) => if row == 0 { rgb("#f5a371") } else { none },
+    [*Máquina*], [*Intervalo base*], [*Temperatura*], [*Vibração*], [*Energia*], [*CO2*],
+    [`maquina-1`], [10 s], [10 s], [15 s], [20 s], [50 s],
+    [`maquina-2`], [5 s], [2,5 s], [17,5 s], [10 s], [25 s],
+    [`maquina-3`], [25 s], [75 s], [37,5 s], [100 s], [125 s],
+  )
+  ],
+  caption: [Intervalo entre medições de cada tipo, por máquina, na implantação inicial.],
+) <tab-intervalos>
+
+As mensagens são enviadas sem chave, e o cliente Kafka as distribui entre as #num-particoes partições do tópico. Com isso, a carga de uma mesma máquina se espalha por várias partições e, portanto, por vários consumidores, o que favorece o balanceamento. O custo dessa escolha é que o Kafka não garante a ordem entre medições de uma mesma máquina, já que ele só ordena mensagens dentro de uma partição.
 
 == Consumidores (processadores de dados)
 
-Os consumidores são um programa Python (`processor.py`) executado em um Deployment com duas réplicas. Todas as réplicas usam o mesmo identificador de grupo (`sensor-group`), de modo que o Kafka divide as partições do tópico entre elas: cada partição é lida por apenas um consumidor do grupo, e a carga é balanceada automaticamente. Se um consumidor entra ou sai do grupo, o Kafka redistribui as partições entre os que restam, num processo chamado de rebalanço.
+Os consumidores são um programa Python (`processor.py`) executado em um Deployment com três réplicas. Todas as réplicas usam o mesmo identificador de grupo (`sensor-group`), de modo que o Kafka divide as partições do tópico entre elas: cada partição é lida por apenas um consumidor do grupo, e a carga é balanceada automaticamente. Se um consumidor entra ou sai do grupo, o Kafka redistribui as partições entre os que restam, num processo chamado de rebalanço. Como o tópico tem #num-particoes partições, no máximo #num-particoes consumidores do grupo recebem partições; os que excedem esse número ficam ociosos.
 
-Para cada mensagem, o consumidor compara o valor medido com o limite do tipo de sensor. Os limites seguem um perfil (`strict`, `normal` ou `loose`), escolhido por variável de ambiente e que pode ser sobrescrito individualmente; no perfil `normal`, por exemplo, os limites são 80 para a temperatura, 3,5 para a vibração, 350 para a energia e 600 para o CO2. Cada leitura é gravada no banco, com uma marca indicando se ela disparou um alerta, e cada alerta gera também um evento de auditoria. Para simular um processamento analítico custoso e assim tornar visível o acúmulo de mensagens (_lag_) sob carga, o consumidor aguarda, a cada mensagem, um tempo sorteado entre valores mínimo e máximo configuráveis (padrão de 0,5 a 1,5 segundo).
+Três configurações do consumidor determinam como ele se comporta nessas situações. Primeiro, a posição de leitura (_offset_) só é confirmada ao Kafka depois que a mensagem é processada, e não automaticamente: se um consumidor cai no meio do processamento, a mensagem é entregue de novo ao consumidor que assumir a partição, em vez de ser perdida. Segundo, o consumidor envia sinais de vida ao coordenador do grupo a cada 3 segundos, e é considerado falho se ficar 10 segundos sem enviá-los, o que limita o tempo até o rebalanço após uma queda. Terceiro, ao receber o sinal de término do Kubernetes (por exemplo, ao ser removido ou quando o Deployment é reduzido), o consumidor encerra de forma controlada e sai do grupo imediatamente, sem esperar esse prazo.
 
-Além de registrar alertas isolados, os consumidores avaliam a frequência de alertas por máquina. O histórico de alertas é mantido em um Redis compartilhado, o que permite somar alertas de uma mesma máquina lidos por consumidores diferentes. Quando uma máquina atinge o número máximo de alertas (padrão de cinco) dentro da janela de análise (padrão de 60 segundos), o consumidor publica no tópico `comandos-fabrica` um comando `KILL` com o identificador da máquina.
+Para cada mensagem, o consumidor compara o valor medido com o limite do tipo de sensor. Os limites seguem um perfil (`strict`, `normal` ou `loose`), escolhido por variável de ambiente e que pode ser sobrescrito individualmente; no perfil `normal`, por exemplo, os limites são 80 para a temperatura, 3,5 para a vibração, 350 para a energia e 600 para o CO2. Cada leitura é gravada no banco, com uma marca indicando se ela disparou um alerta, e cada alerta gera também um evento de auditoria. Para simular um processamento analítico custoso e assim tornar visível o acúmulo de mensagens (_lag_) sob carga, o consumidor aguarda, a cada mensagem, um tempo sorteado entre valores mínimo e máximo configuráveis (0,4 a 0,8 segundo na configuração atual). Se a conexão com o banco cai, ela é refeita antes da próxima mensagem; se o processamento de uma mensagem falha, o erro é registrado e o consumidor segue para a próxima.
+
+Além de registrar alertas isolados, os consumidores avaliam a frequência de alertas por máquina. Como as medições de uma máquina se espalham por várias partições, elas são processadas por consumidores diferentes; por isso o histórico de alertas não pode ficar na memória de cada consumidor e é mantido em um Redis compartilhado, que soma os alertas de uma mesma máquina independentemente de quem os leu. Quando uma máquina atinge o número máximo de alertas (cinco) dentro da janela de análise (30 segundos na configuração atual), o consumidor publica no tópico `comandos-fabrica` um comando `KILL` com o identificador da máquina.
 
 == Controlador
 
@@ -274,7 +301,7 @@ Pods não podem remover outros pods por padrão, então o controlador executa co
 
 Os dados processados são guardados em um PostgreSQL executado como StatefulSet, com um volume persistente de 1 GiB. O consumidor cria duas tabelas: `leituras_sensores`, com uma linha por medição (máquina, tipo de sensor, valor, indicação de alerta e instante), e `event_table`, com os eventos de auditoria de todos os componentes (início, envio de dados, alertas, comandos e remoções de pods). O Adminer, uma interface web, permite consultar essas tabelas.
 
-Nenhum valor de configuração está fixo nas imagens. Endereços, nomes de tópicos, limites, intervalos e tempos vêm de variáveis de ambiente, definidas em ConfigMaps do Kubernetes e injetadas nos pods. A senha do banco, por ser um dado sensível, não fica em ConfigMap: é guardada em um Secret (`postgres-credentials`) criado durante a instalação com uma senha aleatória, gerada uma única vez, e lida pelos pods por referência ao Secret. Assim, a senha não aparece em nenhum arquivo do repositório.
+Nenhum valor de configuração está fixo nas imagens. Endereços, nomes de tópicos, limites, intervalos e tempos vêm de variáveis de ambiente, definidas em ConfigMaps do Kubernetes e injetadas nos pods. A senha do banco, por ser um dado sensível, não fica em ConfigMap: é guardada em um Secret (`postgres-credentials`), um objeto do próprio cluster e não um arquivo, criado durante a instalação com uma senha aleatória gerada uma única vez e lida pelos pods por referência ao Secret. Assim, a senha não é versionada: cada instalação gera a sua.
 
 = INSTALAÇÃO E USO
 
@@ -282,7 +309,7 @@ Nenhum valor de configuração está fixo nas imagens. Endereços, nomes de tóp
 
 A aplicação foi preparada para uma máquina Debian com acesso à internet e a um usuário com permissão de `sudo`. A instalação usa o Docker para construir as imagens e o K3s, uma distribuição leve do Kubernetes que já inclui o `kubectl`. Todos os comandos abaixo são executados na raiz do repositório.
 
-Os scripts de teste da pasta `scripts/` precisam de permissão de execução. Se o repositório for clonado sem ela, execute uma vez `chmod +x scripts/*.sh`.
+Os scripts da pasta `scripts/` estão versionados com permissão de execução, e o `make init` a aplica novamente a todos eles.
 
 == Instalação
 
@@ -292,7 +319,7 @@ A instalação é automatizada pelo Makefile, em três etapas.
 + Ligar o cluster local com `make start-cluster`.
 + Construir as imagens e implantar tudo com `make all`. Esse comando constrói as imagens do sensor, do consumidor e do controlador, as importa para o K3s, aplica os manifestos do Kafka (ConfigMaps, Services, StatefulSet e Job de criação dos tópicos) e aplica os da aplicação (Secret com a senha do banco, ConfigMaps, PostgreSQL, Redis, Adminer, controlador, sensores e consumidores).
 
-A conferência é feita com `make status`, que lista pods, serviços e StatefulSets. Após um ou dois minutos, todos os pods devem estar em estado `Running`, e o pod do Job de criação dos tópicos em `Completed`.
+A conferência é feita com `make status`, que lista pods, serviços e StatefulSets. Após um ou dois minutos, todos os pods devem estar em estado `Running`, e o pod do Job de criação dos tópicos em `Completed`. Para obter logs detalhados das bibliotecas, a implantação pode ser feita com `make all DEBUG=1`, que ativa o modo de depuração nos ConfigMaps.
 
 == Operação
 
@@ -310,13 +337,15 @@ A @tab-comandos reúne os principais comandos de operação.
     [*Comando*], [*O que faz*],
     [`make status`], [Lista pods, serviços e StatefulSets],
     [`make logs-producer`, `make logs-consumer`, `make logs-controlador`], [Acompanha os logs dos sensores, consumidores e controlador],
-    [`make kafka-lag`], [Mostra, por partição, o consumidor responsável e o _lag_ do grupo `sensor-group`],
+    [`make kafka-lag`], [Mostra, por partição, o consumidor responsável e o _lag_ do grupo `sensor-group`, consultando qualquer broker em execução],
     [`make db-shell`], [Abre o `psql` dentro do pod do PostgreSQL],
     [`make db-ui`], [Expõe o Adminer na porta 8080, já autenticado no banco],
     [`make db-password`], [Exibe a senha do banco, lida do Secret],
-    [`make scale-producers`, `make scale-consumers`], [Aumenta o número de sensores da `maquina-1` e de consumidores],
+    [`make scale-producers MACHINES=N`], [Garante que existam N máquinas, criando os Deployments que faltam (padrão: 5)],
+    [`make scale-machine MAQUINA=M P_REPLICAS=R`], [Coloca R pods simultâneos na máquina M (padrão: máquina 1, 3 pods)],
+    [`make scale-consumers C_REPLICAS=N`], [Ajusta o número de consumidores para N (padrão: 10)],
     [`make test-all`], [Executa o roteiro interativo de testes],
-    [`make clean`], [Remove os recursos declarados nos manifestos],
+    [`make clean`], [Remove os recursos declarados nos manifestos e as máquinas criadas durante a execução],
     [`make db-reset`], [Apaga o volume do PostgreSQL, zerando o banco],
   )
   ],
@@ -329,7 +358,7 @@ O Adminer é aberto com login automático. Por isso, a porta 8080 exposta por `m
 
 = TESTES DE FALHA E ELASTICIDADE
 
-Os testes são executados por scripts da pasta `scripts/`. Cada script salva a saída em um arquivo na pasta `logs/`, com data e hora no nome, dividido em seções (antes, falha e depois). Cada comando executado aparece no arquivo seguido de sua saída, e um comando que falha ou excede o tempo limite também é registrado, sem interromper o teste. Os tempos de espera, os nomes dos deployments e o número de réplicas são configuráveis por variáveis de ambiente.
+Os testes são executados por scripts da pasta `scripts/`. Cada script salva a saída em um arquivo na pasta `logs/`, com data e hora no nome, dividido em seções (antes, falha e depois). Cada comando executado aparece no arquivo seguido de sua saída, e um comando que falha ou excede o tempo limite também é registrado, sem interromper o teste. Os tempos de espera, os nomes dos deployments e o número de réplicas são configuráveis por variáveis de ambiente. O roteiro interativo (`make test-all`) também grava toda a sua saída em `logs/interactive_*.log`.
 
 == Falha de um broker Kafka
 
@@ -341,23 +370,25 @@ O script `test_consumer_rebalance.sh` remove um dos pods consumidores. Antes da 
 
 == Elasticidade
 
-O script `test_elasticity.sh` demonstra a elasticidade em duas fases. Na primeira, aumenta o número de pods de um sensor (de um para três por padrão) e coleta amostras periódicas do _lag_ do grupo, que tende a crescer porque as mensagens passam a ser produzidas mais depressa do que consumidas. Na segunda, aumenta o número de consumidores (de dois para quatro por padrão) e coleta novas amostras, esperando que o _lag_ diminua conforme as partições são redistribuídas. Como o tópico tem três partições, consumidores além do terceiro ficam ociosos, já que cada partição é lida por um único consumidor do grupo. // TODO: descrever o que foi observado e citar o arquivo em `logs/`.
-// TODO(verificar): checar se o LAG se concentra em uma partição por causa da chave `maquina-1`
-// (ver "Pontos a verificar" em docs/alteracoes.md) e, se sim, explicar aqui o motivo.
+O script `test_elasticity.sh` demonstra a elasticidade em duas fases. Na primeira, aumenta o número de pods de um sensor (de um para três por padrão) e coleta amostras periódicas do _lag_ do grupo, que tende a crescer porque as mensagens passam a ser produzidas mais depressa do que consumidas. Na segunda, aumenta o número de consumidores (de dois para quatro por padrão) e coleta novas amostras, esperando que o _lag_ diminua conforme as partições são redistribuídas. Como as mensagens não têm chave, a carga extra dos novos pods se distribui entre as #num-particoes partições, e o aumento de consumidores tem efeito até o limite de #num-particoes consumidores úteis. // TODO: descrever o que foi observado e citar o arquivo em `logs/elasticidade_*.log` (nenhum foi gerado até agora).
 
-O roteiro interativo (`make test-all`) percorre as mesmas situações passo a passo, com painéis de monitoramento atualizados na tela.
+O roteiro interativo (`make test-all`) percorre as mesmas situações passo a passo, com painéis de monitoramento atualizados na tela e uma espera explícita até o grupo de consumo voltar ao estado estável após cada rebalanço. Nele, a elasticidade é demonstrada de outra forma: em vez de mais pods de uma mesma máquina, são criadas novas máquinas (cinco no total) e, em seguida, o número de consumidores é elevado para dez, dos quais no máximo #num-particoes recebem partições. Ao final, o roteiro devolve os sensores e os consumidores a uma configuração padrão.
 
 = RESULTADOS
 
 == O que funcionou
 
 // TODO: preencher depois de executar os testes no cluster.
+// ATENÇÃO: os logs versionados em logs/ e tests_execution.log (na main) são de 26/09 ~01:00,
+// ANTERIORES à correção do tópico: mostram PartitionCount 1 e ReplicationFactor 1.
+// Refazer os testes com a configuração atual (6 partições, fator 3) antes de usar como evidência.
 
 == O que não funcionou
 
-// TODO: preencher depois de executar os testes no cluster. Incluir as limitações conhecidas
-// (ver docs/alteracoes.md): replicação do tópico, quórum KRaft de 2 nós, ausência de volume
-// persistente no Kafka, Adminer sem senha, scripts versionados sem permissão de execução.
+// TODO: preencher depois de executar os testes no cluster. Limitações conhecidas a considerar:
+// ausência de volume persistente no Kafka; Adminer sem senha; Job de tópicos apaga os dados a cada
+// deploy; sem ordem garantida por máquina (mensagens sem chave); nos logs antigos, o grupo de
+// consumo entrava em rebalanço repetidamente (verificar se ainda ocorre).
 
 = CONCLUSÃO
 

@@ -1,4 +1,4 @@
-.PHONY: all init start-cluster build deploy deploy-kafka secrets deploy-apps db-password clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-consumers db-reset kafka-lag test-all
+.PHONY: all init start-cluster build deploy deploy-kafka secrets deploy-apps db-password clean status logs-producer logs-consumer logs-controlador db-shell db-ui scale-producers scale-machine scale-consumers db-reset kafka-lag test-all
 
 # Imagens Docker
 PRODUCER_IMG := smart-factory-producer:latest
@@ -101,10 +101,17 @@ db-ui:
 	@echo "O Auto-Login está ativado. Você será conectado automaticamente na base fabrica!"
 	kubectl port-forward svc/adminer 8080:8080 --address 0.0.0.0
 
-P_REPLICAS ?= 3
+MACHINES ?= 5
 scale-producers:
-	@echo "Escalando a máquina-1 para $(P_REPLICAS) instâncias para gerar carga no Kafka..."
-	kubectl scale deployment producer-maquina-1 --replicas=$(P_REPLICAS)
+	@echo "Criando novas máquinas (deployments) se não existirem (Total desejado: $(MACHINES))..."
+	@chmod +x scripts/scale_producers.sh
+	@./scripts/scale_producers.sh $(MACHINES)
+
+MAQUINA ?= 1
+P_REPLICAS ?= 3
+scale-machine:
+	@echo "Escalando a máquina-$(MAQUINA) para $(P_REPLICAS) instâncias simultâneas..."
+	kubectl scale deployment producer-maquina-$(MAQUINA) --replicas=$(P_REPLICAS)
 
 C_REPLICAS ?= 4
 scale-consumers:

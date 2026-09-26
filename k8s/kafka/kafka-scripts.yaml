@@ -19,7 +19,7 @@ data:
     cat <<EOF > /tmp/kraft.properties
     process.roles=broker,controller
     node.id=$KAFKA_NODE_ID
-    controller.quorum.voters=0@kafka-0.kafka-headless.default.svc.cluster.local:9093,1@kafka-1.kafka-headless.default.svc.cluster.local:9093
+    controller.quorum.voters=0@kafka-0.kafka-headless.default.svc.cluster.local:9093,1@kafka-1.kafka-headless.default.svc.cluster.local:9093,2@kafka-2.kafka-headless.default.svc.cluster.local:9093
     listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
     advertised.listeners=$ADVERTISED_LISTENERS
     controller.listener.names=CONTROLLER

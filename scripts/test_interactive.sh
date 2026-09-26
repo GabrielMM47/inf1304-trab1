@@ -28,70 +28,60 @@ press_enter
 print_header "Fase 1: Elasticidade sob Carga (Injeção)" "Vamos forçar uma alta carga (Escalando a máquina-1). O LAG (Fila) do Kafka começará a crescer."
 make scale-producers
 echo ""
-echo "Entrando no painel dinâmico. Pressione [ENTER] quando quiser acionar o resgate..."
-sleep 2
+echo "Entrando no painel dinâmico. Monitorando o LAG por 20 segundos..."
 
-while true; do
+for i in 1 2 3 4 5; do
     clear
     echo "=========================================================="
-    echo -e "\e[1;31mMONITORAMENTO DE GARGALO (LAG) - Aperte [ENTER] para avançar\e[0m"
+    echo -e "\e[1;31mMONITORAMENTO DE GARGALO (LAG) - Coletando amostra $i/5\e[0m"
     echo "=========================================================="
     make kafka-lag
-    read -t 5 -n 1 key
-    if [[ $key == "" ]]; then continue; else break; fi
+    sleep 5
 done
 
 print_header "Fase 1: Elasticidade sob Carga (Resgate)" "Vamos escalar os consumidores para esvaziar a fila acumulada."
 make scale-consumers
 echo ""
-echo "Entrando no painel dinâmico. Pressione [ENTER] quando a fila estiver sob controle..."
-sleep 2
+echo "Entrando no painel dinâmico. Monitorando o alívio do LAG por 20 segundos..."
 
-while true; do
+for i in 1 2 3 4 5; do
     clear
     echo "=========================================================="
-    echo -e "\e[1;32mMONITORAMENTO DE ALÍVIO (LAG) - Aperte [ENTER] para avançar\e[0m"
+    echo -e "\e[1;32mMONITORAMENTO DE ALÍVIO (LAG) - Coletando amostra $i/5\e[0m"
     echo "=========================================================="
     make kafka-lag
-    read -t 5 -n 1 key
-    if [[ $key == "" ]]; then continue; else break; fi
+    sleep 5
 done
 
 # FASE 2: Rebalanceamento de Consumidores
 print_header "Fase 2: Resiliência de Processamento (Consumer Rebalance)" "Iremos abater um consumidor. O Kafka reorganizará as tarefas entre os sobreviventes."
 ./scripts/test_consumer_rebalance.sh
-echo ""
-echo "Entrando no painel dinâmico. Pressione [ENTER] quando o rebalanceamento terminar..."
-sleep 2
+echo "Entrando no painel dinâmico. Monitorando o rebalanceamento por 20 segundos..."
 
-while true; do
+for i in 1 2 3 4 5; do
     clear
     echo "=========================================================="
-    echo -e "\e[1;33mMONITORAMENTO DE REBALANCEAMENTO - Aperte [ENTER] para avançar\e[0m"
+    echo -e "\e[1;33mMONITORAMENTO DE REBALANCEAMENTO - Coletando amostra $i/5\e[0m"
     echo "=========================================================="
     echo "Status dos Consumidores:"
     kubectl get pods -l app=consumer
     echo ""
     make kafka-lag
-    read -t 5 -n 1 key
-    if [[ $key == "" ]]; then continue; else break; fi
+    sleep 4
 done
 
 # FASE 3: Caos na Infraestrutura
 print_header "Fase 3: Caos na Infraestrutura (Broker Failover)" "Vamos deletar o broker líder do Kafka e observar a auto-recuperação do cluster KRaft."
 ./scripts/test_broker_failover.sh
-echo ""
-echo "Entrando no painel dinâmico. Pressione [ENTER] quando o broker for recriado..."
-sleep 2
+echo "Entrando no painel dinâmico. Monitorando o failover por 20 segundos..."
 
-while true; do
+for i in 1 2 3 4 5; do
     clear
     echo "=========================================================="
-    echo -e "\e[1;35mMONITORAMENTO DO KAFKA - Aperte [ENTER] para avançar\e[0m"
+    echo -e "\e[1;35mMONITORAMENTO DO KAFKA - Coletando amostra $i/5\e[0m"
     echo "=========================================================="
     kubectl get pods -l app=kafka -o wide
-    read -t 5 -n 1 key
-    if [[ $key == "" ]]; then continue; else break; fi
+    sleep 4
 done
 
 # FASE 4: Auditoria

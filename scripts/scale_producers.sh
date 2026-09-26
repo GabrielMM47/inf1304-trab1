@@ -14,6 +14,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: producer-maquina-$i
+  labels:
+    app: producer
 spec:
   replicas: 1
   selector:

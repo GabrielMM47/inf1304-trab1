@@ -46,8 +46,15 @@ secrets:
 db-password:
 	@kubectl get secret postgres-credentials -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d; echo
 
+DEBUG ?= 0
 deploy-apps: secrets
 	@echo "Subindo Bancos de Dados e Aplicações..."
+	@if [ "$(DEBUG)" = "1" ]; then \
+		echo "⚙️  Modo DEBUG ativado (DEBUG=1)! Injetando nos ConfigMaps..."; \
+		sed -i 's/DEBUG_MODE: "0"/DEBUG_MODE: "1"/g' k8s/apps/configmap.yaml; \
+	else \
+		sed -i 's/DEBUG_MODE: "1"/DEBUG_MODE: "0"/g' k8s/apps/configmap.yaml; \
+	fi
 	kubectl apply -f k8s/apps/configmap.yaml
 	kubectl apply -f k8s/apps/postgres.yaml
 	kubectl apply -f k8s/apps/redis.yaml
@@ -62,6 +69,7 @@ deploy: deploy-kafka deploy-apps
 clean:
 	@echo "Removendo todos os recursos do Kubernetes..."
 	kubectl delete -f k8s/apps/ || true
+	kubectl delete $$(kubectl get deployments -o name | grep producer) || true
 	kubectl delete -f k8s/kafka/ || true
 	@echo "Encerrando túneis de rede ativos..."
 	pkill -f "[k]ubectl port-forward" || true

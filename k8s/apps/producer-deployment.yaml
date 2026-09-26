@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: producer-maquina-1
+  labels:
+    app: producer
 spec:
   replicas: 1
   selector:
@@ -36,6 +38,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: producer-maquina-2
+  labels:
+    app: producer
 spec:
   replicas: 1
   selector:
@@ -75,6 +79,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: producer-maquina-3
+  labels:
+    app: producer
 spec:
   replicas: 1
   selector:

@@ -10,7 +10,10 @@ import os
 import json
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+if os.environ.get("DEBUG_MODE") == "1":
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 import time
 import random
 import redis
@@ -266,7 +269,7 @@ def main():
         group_id=config["group_id"],
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
         auto_offset_reset='earliest',
-        enable_auto_commit=True,
+        enable_auto_commit=False,
         max_poll_interval_ms=600000  # 10 minutos para não dar timeout em demoras de I/O
     )
     
@@ -281,8 +284,10 @@ def main():
         for mensagem in consumidor:
             try:
                 processar_mensagem(mensagem.value, config, produtor_comandos, pg_conn)
+                consumidor.commit()
             except Exception as e:
                 print(f"Erro ao processar mensagem (pulando para a próxima): {e}")
+                consumidor.commit()
     except KeyboardInterrupt:
         print("Parando consumidor...")
     finally:

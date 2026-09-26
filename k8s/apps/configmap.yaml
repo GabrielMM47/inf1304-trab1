@@ -11,6 +11,7 @@ kind: ConfigMap
 metadata:
   name: producer-config
 data:
+  DEBUG_MODE: "0"
   KAFKA_BROKER: "kafka:9092"
   KAFKA_TOPIC: "dados-sensores"
   GENERATION_INTERVAL: "2.0"
@@ -28,6 +29,7 @@ kind: ConfigMap
 metadata:
   name: consumer-config
 data:
+  DEBUG_MODE: "0"
   KAFKA_BROKER: "kafka:9092"
   KAFKA_TOPIC: "dados-sensores"
   KAFKA_TOPIC_COMANDOS: "comandos-fabrica"
@@ -49,6 +51,7 @@ kind: ConfigMap
 metadata:
   name: controlador-config
 data:
+  DEBUG_MODE: "0"
   KAFKA_BROKER: "kafka:9092"
   KAFKA_TOPIC_COMANDOS: "comandos-fabrica"
   KAFKA_GROUP_ID_CONTROLADOR: "controlador-instancias-group"

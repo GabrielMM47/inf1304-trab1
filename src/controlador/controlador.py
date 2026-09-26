@@ -9,7 +9,10 @@ import os
 import json
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+if os.environ.get("DEBUG_MODE") == "1":
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 import psycopg2
 from kafka import KafkaConsumer
 from kubernetes import client, config as k8s_config

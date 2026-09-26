@@ -163,7 +163,7 @@
 // e k8s/kafka/kafka-init-job.yaml). Atualizar aqui se os manifestos mudarem.
 // -------------------------------------------------------------------
 #let num-brokers = "três"
-#let num-particoes = "seis"
+#let num-particoes = "doze"
 #let fator-replicacao = "3"
 
 = INTRODUÇÃO
@@ -358,19 +358,19 @@ O Adminer é aberto com login automático. Por isso, a porta 8080 exposta por `m
 
 = TESTES DE FALHA E ELASTICIDADE
 
-Os testes são executados por scripts da pasta `scripts/`. Cada script salva a saída em um arquivo na pasta `logs/`, com data e hora no nome, dividido em seções (antes, falha e depois). Cada comando executado aparece no arquivo seguido de sua saída, e um comando que falha ou excede o tempo limite também é registrado, sem interromper o teste. Os tempos de espera, os nomes dos deployments e o número de réplicas são configuráveis por variáveis de ambiente. O roteiro interativo (`make test-all`) também grava toda a sua saída em `logs/interactive_*.log`.
+Os testes são executados por scripts da pasta `scripts/`. Cada script salva a saída em um arquivo próprio na pasta `logs/`, organizado em seções (antes, falha e depois). Cada comando aparece seguido de sua saída; falhas e tempos limite também são registrados, sem interromper o teste. Os tempos de espera, os nomes dos deployments e o número de réplicas podem ser configurados por variáveis de ambiente. O roteiro interativo (`make test-all`) também salva a saída em `logs/interactive_*.log`.
 
 == Falha de um broker Kafka
 
-O script `test_broker_failover.sh` derruba à força o primeiro pod do StatefulSet do Kafka, simulando uma perda de energia. Antes e depois da falha, ele registra o líder, as réplicas e as réplicas em sincronia de cada partição do tópico, o _lag_ do grupo de consumo, o total de leituras gravadas no banco e os logs dos consumidores. Os comandos posteriores à falha são executados no broker que sobreviveu. A evidência de que o sistema continuou funcionando é o crescimento do total de leituras no banco, e não os logs dos sensores, porque o cliente Kafka dos sensores envia mensagens de forma assíncrona e registra "enviado" mesmo quando a entrega falha. // TODO: descrever o que foi observado (líderes, ISR, contagem de leituras) e citar o arquivo em `logs/`.
+O script `test_broker_failover.sh` remove à força o primeiro pod do StatefulSet do Kafka, simulando uma falha abrupta. Antes e depois, registra líderes, réplicas e ISR de cada partição, o _lag_ do grupo, a quantidade de leituras no banco e os logs dos consumidores. As consultas posteriores são feitas por meio de um broker sobrevivente. A continuidade do processamento é indicada pelo aumento das leituras no banco; os logs dos produtores não são evidência suficiente, pois o envio do cliente Kafka é assíncrono. No teste, as 12 partições mantiveram líderes, o ISR passou de três brokers para os dois sobreviventes e a quantidade de leituras aumentou de 56.573 para 56.706. Os registros estão em `logs/failover_broker_*.log`.
 
 == Falha de um consumidor e rebalanço
 
-O script `test_consumer_rebalance.sh` remove um dos pods consumidores. Antes da falha, ele registra a tabela do grupo de consumo, que mostra qual consumidor lê cada partição, e as últimas linhas de log do pod que será removido. Depois de um intervalo suficiente para o Kafka detectar a saída do consumidor, registra novamente a tabela do grupo e os logs dos consumidores restantes. O rebalanço é demonstrado pela mudança do consumidor responsável pelas partições entre as duas tabelas. // TODO: descrever o que foi observado e citar o arquivo em `logs/`.
+O script `test_consumer_rebalance.sh` remove um pod consumidor e registra a atribuição das partições antes e depois da falha, além dos logs dos consumidores. Os registros mostram uma nova geração do grupo e a atribuição das partições aos membros sobreviventes. A consulta feita logo após a remoção ainda indicava rebalanço, enquanto o pod substituto estava inicializando; por isso, essa captura isolada não confirma a estabilização final. Os registros estão em `logs/rebalanco_consumidor_*.log`.
 
 == Elasticidade
 
-O script `test_elasticity.sh` demonstra a elasticidade em duas fases. Na primeira, aumenta o número de pods de um sensor (de um para três por padrão) e coleta amostras periódicas do _lag_ do grupo, que tende a crescer porque as mensagens passam a ser produzidas mais depressa do que consumidas. Na segunda, aumenta o número de consumidores (de dois para quatro por padrão) e coleta novas amostras, esperando que o _lag_ diminua conforme as partições são redistribuídas. Como as mensagens não têm chave, a carga extra dos novos pods se distribui entre as #num-particoes partições, e o aumento de consumidores tem efeito até o limite de #num-particoes consumidores úteis. // TODO: descrever o que foi observado e citar o arquivo em `logs/elasticidade_*.log` (nenhum foi gerado até agora).
+O script `test_elasticity.sh` demonstra a elasticidade em duas fases: primeiro amplia a produção e, em seguida, aumenta o número de consumidores. As amostras do _lag_ permitem observar se a taxa de consumo acompanha a produção. Como as mensagens não têm chave, a carga dos produtores é distribuída entre as #num-particoes partições; o paralelismo útil do grupo também é limitado a esse número. No roteiro interativo, o _lag_ aumentou de 8 para 290 mensagens após a ampliação dos produtores de três para oito Deployments. Com o grupo escalado para 12 consumidores, houve um pico de 361 mensagens, seguido por reduções para 68, 30, 13 e 9. A fase interativa não gera arquivo de elasticidade próprio; seus registros estão em `logs/interactive_*.log`.
 
 O roteiro interativo (`make test-all`) percorre as mesmas situações passo a passo, com painéis de monitoramento atualizados na tela e uma espera explícita até o grupo de consumo voltar ao estado estável após cada rebalanço. Nele, a elasticidade é demonstrada de outra forma: em vez de mais pods de uma mesma máquina, são criadas novas máquinas (cinco no total) e, em seguida, o número de consumidores é elevado para dez, dos quais no máximo #num-particoes recebem partições. Ao final, o roteiro devolve os sensores e os consumidores a uma configuração padrão.
 
@@ -378,21 +378,25 @@ O roteiro interativo (`make test-all`) percorre as mesmas situações passo a pa
 
 == O que funcionou
 
-// TODO: preencher depois de executar os testes no cluster.
-// ATENÇÃO: os logs versionados em logs/ e tests_execution.log (na main) são de 26/09 ~01:00,
-// ANTERIORES à correção do tópico: mostram PartitionCount 1 e ReplicationFactor 1.
-// Refazer os testes com a configuração atual (6 partições, fator 3) antes de usar como evidência.
+Os testes utilizaram o tópico `dados-sensores` com 12 partições e fator de replicação 3, conforme os manifestos. No failover, a remoção de `kafka-0` foi seguida pela recriação do pod pelo StatefulSet. Todas as partições mantiveram um líder, o ISR passou de `0,1,2` para `1,2`, e as leituras no PostgreSQL aumentaram de 56.573 para 56.706, indicando continuidade do processamento. Os registros estão em `logs/failover_broker_*.log`.
+
+No teste de consumidor, a remoção de um pod levou o Deployment a iniciar um substituto. Os membros sobreviventes entraram em uma nova geração e receberam as partições; a consulta mostrou as 12 partições atribuídas, sem `CONSUMER-ID` vazio. Como o grupo ainda aparecia em rebalanço e o substituto estava inicializando na captura inicial, a estabilização completa não foi confirmada por esse registro isolado. Os registros estão em `logs/rebalanco_consumidor_*.log`.
+
+O roteiro interativo também evidenciou o efeito da elasticidade. Ao aumentar os produtores de três para oito Deployments, o _lag_ subiu de 8 para 290 mensagens. Após o escalonamento para 12 consumidores, atingiu 361 na primeira amostra e caiu para 68, 30, 13 e 9 nas amostras seguintes. A ampliação dos consumidores reduziu a fila após a inicialização e a reatribuição das partições. Esses dados estão em `logs/interactive_*.log`.
 
 == O que não funcionou
 
-// TODO: preencher depois de executar os testes no cluster. Limitações conhecidas a considerar:
-// ausência de volume persistente no Kafka; Adminer sem senha; Job de tópicos apaga os dados a cada
-// deploy; sem ordem garantida por máquina (mensagens sem chave); nos logs antigos, o grupo de
-// consumo entrava em rebalanço repetidamente (verificar se ainda ocorre).
+O teste de rebalanceamento não aguardou o suficiente para registrar uma fotografia final estável: a consulta feita dois segundos após a remoção ainda retornou o aviso `Consumer group 'sensor-group' is rebalancing`, e o pod substituto estava em `Init:0/1`. Os logs dos consumidores mostram que eles concluíram uma nova geração e receberam partições pouco depois, mas o teste isolado não confirma o estado estável do grupo nem o estado final do pod substituto. Assim, a redistribuição foi observada, mas a recuperação completa precisa de uma verificação posterior para ser afirmada sem ressalvas.
+
+Na elasticidade, o _lag_ continuou crescendo brevemente depois de subir o número de consumidores: a primeira amostra após o escalonamento foi de 361, acima das 290 mensagens anteriores. A queda só aparece nas amostras seguintes, o que evidencia o custo de inicialização dos pods e do rebalanceamento; adicionar réplicas não elimina instantaneamente uma fila já acumulada. Como o tópico tem 12 partições, consumidores além desse limite não receberiam partições úteis.
+
+Há também limitações da configuração, não falhas específicas observadas nesses ensaios: os brokers Kafka não usam volumes persistentes; o Job de inicialização apaga e recria os tópicos a cada implantação; as mensagens dos sensores não têm chave, então não há garantia de ordenação por máquina; e o Adminer está configurado com acesso automático, sem autenticação própria. O teste de failover mostra que as réplicas mantiveram o serviço durante a janela medida, mas não prova sozinho ausência de perda de mensagens em qualquer cenário de falha.
 
 = CONCLUSÃO
 
-// TODO: síntese dos resultados e possíveis melhorias.
+Os testes demonstraram, no ambiente executado, a continuidade de leitura após a queda de um broker, a redistribuição de partições após a remoção de um consumidor e a redução do _lag_ depois do aumento de consumidores. O experimento de carga também mostrou que a capacidade de processamento pode ficar temporariamente abaixo da taxa de produção e que o escalonamento leva algum tempo para surtir efeito. Os resultados são coerentes com uma arquitetura que combina replicação do Kafka, grupos de consumo e recuperação de pods pelo Kubernetes.
+
+Como próximos passos, recomenda-se ampliar o tempo de espera do teste de rebalanceamento e só registrar o resultado depois de confirmar que o grupo está estável e que o pod substituto está pronto. Também são melhorias relevantes persistir os dados dos brokers, proteger o acesso ao Adminer e usar a chave da máquina nas mensagens caso a ordem por máquina seja necessária. Por fim, testes de carga repetidos e com métricas de duração e volume permitiriam comparar quantitativamente diferentes configurações de produtores e consumidores.
 
 #pagebreak()
 #bibliography("referencias.yaml", style: "associacao-brasileira-de-normas-tecnicas", title: "REFERÊNCIAS")
@@ -403,7 +407,19 @@ O roteiro interativo (`make test-all`) percorre as mesmas situações passo a pa
 
 = Logs de execução <apendice-logs>
 
-// TODO: trechos dos logs gerados em logs/ que mostram o rebalanço e o failover.
+Os trechos abaixo resumem as evidências coletadas. Os arquivos completos, com as tabelas por partição e os logs dos pods, estão na pasta `logs/`.
+
+== Failover do broker
+
+No teste de failover, o tópico tinha 12 partições, fator de replicação 3 e ISR `0,1,2` antes da falha. Após a remoção de `kafka-0`, todas as partições mantiveram um líder e o ISR passou a `1,2`. O StatefulSet recriou o pod, e a contagem de leituras no banco aumentou de 56.573 para 56.706. O log completo está em `logs/failover_broker_*.log`.
+
+== Rebalanceamento de consumidores
+
+No teste de rebalanceamento, a remoção do consumidor foi seguida por uma nova geração do grupo e pela atribuição de partições aos membros restantes. A primeira consulta posterior ainda indicava rebalanço, e o pod substituto estava inicializando; portanto, o registro demonstra a redistribuição em andamento, mas não a estabilização final. O log completo está em `logs/rebalanco_consumidor_*.log`.
+
+== Elasticidade
+
+No teste de elasticidade, o _lag_ aumentou de 8 para 290 mensagens após a ampliação dos produtores. Com o grupo ampliado para 12 consumidores, as amostras foram de 361, 68, 30, 13 e 9 mensagens, mostrando um pico inicial seguido pela redução da fila. O registro completo está em `logs/interactive_*.log`.
 
 // ANEXOS (material de terceiros)
 

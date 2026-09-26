@@ -15,7 +15,7 @@ A revisão do repositório contra o enunciado gerou uma lista de itens. Os núme
 | 5 | Log de rebalanço no consumidor (`ConsumerRebalanceListener`, partição em cada leitura) | Pendente |
 | 6 | Logs salvos pelos scripts de teste e relatório final (`docs/report.md`) | Em andamento: scripts salvam logs (feito); relatório pendente |
 | 7 | Documentação citando Zookeeper, removido do projeto (Kafka roda em KRaft) | **Concluído** |
-| 8 | Constantes hard-coded e docstrings faltantes (itens pontuados no enunciado) | Em andamento (escopo parcial): tempo de processamento, UUID do cluster e senha do Postgres feitos; faltam perfis de limites/faixas do sensor e docstrings |
+| 8 | Constantes hard-coded e docstrings faltantes (itens pontuados no enunciado) | Em andamento (escopo parcial): tempo de processamento, UUID do cluster, senha do Postgres e docstrings feitos; faltam perfis de limites e faixas de valores do sensor |
 
 Ordem combinada de execução: 7, depois 8 (parcial), depois a parte de salvamento de logs do 6, depois 1, 2, 4 e 5, e por fim o relatório do 6.
 
@@ -308,3 +308,26 @@ Sem cluster, foi verificado: sintaxe dos YAMLs (PyYAML), `bash -n` do script KRa
 ### Correção no README: matrícula de Gabriel Martins Mendes (2026-09-25)
 
 A tabela de integrantes do `README.md` tinha o marcador `231XXXX` no lugar da matrícula de Gabriel Martins Mendes. Foi substituído por `2311271`. Alteração de uma linha, sem impacto em código ou manifestos. Validação (só texto): `grep -n 2311271 README.md` deve retornar uma linha, na tabela de integrantes.
+
+### Item 8 (parcial): docstrings nas funções que não tinham (2026-09-26)
+
+**Problema.** O enunciado pontua a documentação do código com DocString. Das 22 funções dos três serviços, 9 não tinham docstring, algumas delas adicionadas recentemente (como `check_and_reconnect_pg`).
+
+**O que foi feito.** Apenas docstrings; nenhuma linha de lógica foi alterada. O estilo segue o dos docstrings existentes (português, seções "Argumentos:" e "Retorna:").
+
+| Arquivo | Funções documentadas |
+|---------|----------------------|
+| `src/consumer/processor.py` | `check_and_reconnect_pg`, `log_event`, `obter_limite` (função interna de `obter_configuracao`) |
+| `src/controlador/controlador.py` | `obter_configuracao`, `init_postgres`, `log_event`, `main` |
+| `src/producer/sensor.py` | `init_postgres`, `log_event` |
+
+**Como validar (sem cluster).**
+- `python3 -m py_compile src/*/*.py` deve terminar sem erros.
+- Cobertura: o comando abaixo deve mostrar `10/10`, `6/6` e `6/6`.
+  ```bash
+  python3 -c "import ast,glob
+  for f in sorted(glob.glob('src/*/*.py')):
+      fs=[n for n in ast.walk(ast.parse(open(f).read())) if isinstance(n,ast.FunctionDef)]
+      print(f, sum(1 for n in fs if ast.get_docstring(n)), '/', len(fs))"
+  ```
+- Como só foram adicionados comentários, não é preciso reconstruir as imagens para validar; na próxima execução do `make build` elas passam a incluir os docstrings.

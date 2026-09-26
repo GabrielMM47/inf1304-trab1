@@ -64,6 +64,18 @@ def obter_configuracao():
     
     # Substitui pelos valores específicos se estiverem definidos
     def obter_limite(chave_env, chave_base):
+        """
+        Retorna o limite de um sensor, priorizando a variável de ambiente.
+
+        Argumentos:
+            chave_env (str): Nome da variável de ambiente que sobrescreve o limite
+                (ex: "LIMITE_TEMPERATURA").
+            chave_base (str): Tipo do sensor no perfil de limites (ex: "temperatura").
+
+        Retorna:
+            float: O valor da variável de ambiente, se definida; caso contrário, o
+            limite do perfil escolhido em `PERFIL_LIMITES`.
+        """
         val = os.environ.get(chave_env)
         return float(val) if val is not None else limites_base[chave_base]
         
@@ -134,6 +146,20 @@ def init_postgres(config):
         return None
 
 def check_and_reconnect_pg(pg_conn, config):
+    """
+    Verifica se a conexão com o PostgreSQL ainda funciona e a refaz se necessário.
+
+    Executa um `SELECT 1` na conexão atual. Se não houver conexão ou se a consulta
+    falhar (por exemplo, após o pod do banco ser reiniciado), abre uma nova conexão
+    com `init_postgres`, que também recria as tabelas caso não existam.
+
+    Argumentos:
+        pg_conn: Conexão atual com o PostgreSQL, ou None.
+        config (dict): Configuração com os dados de conexão do banco.
+
+    Retorna:
+        Uma conexão válida, ou None se não for possível conectar.
+    """
     if pg_conn is None:
         return init_postgres(config)
     try:
@@ -145,6 +171,18 @@ def check_and_reconnect_pg(pg_conn, config):
         return init_postgres(config)
 
 def log_event(pg_conn, component, event_type, details):
+    """
+    Registra um evento de auditoria na tabela `event_table` do PostgreSQL.
+
+    Não faz nada se não houver conexão com o banco. Falhas na gravação são
+    apenas impressas, para não interromper o processamento principal.
+
+    Argumentos:
+        pg_conn: Conexão com o PostgreSQL, ou None se o banco não estiver disponível.
+        component (str): Nome do componente que gerou o evento (ex: "CONSUMIDOR").
+        event_type (str): Tipo do evento (ex: "START", "ALERT_TRIGGERED").
+        details (dict): Dados adicionais do evento, gravados como JSON.
+    """
     if not pg_conn:
         return
     try:

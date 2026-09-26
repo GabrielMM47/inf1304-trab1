@@ -53,6 +53,21 @@ def obter_configuracao():
     }
 
 def init_postgres(config):
+    """
+    Conecta ao PostgreSQL e garante a existência da tabela `event_table`.
+
+    Os dados de conexão vêm da configuração (variáveis de ambiente). Se `PG_HOST`
+    não estiver definido, o sensor roda sem banco. A conexão usa autocommit,
+    então cada evento gravado é persistido imediatamente.
+
+    Argumentos:
+        config (dict): Configuração com as chaves `pg_host`, `pg_port`, `pg_db`,
+            `pg_user` e `pg_password`.
+
+    Retorna:
+        A conexão com o banco, ou None se `PG_HOST` não estiver definido ou se a
+        conexão falhar.
+    """
     if not config.get("pg_host"):
         return None
     try:
@@ -80,6 +95,18 @@ def init_postgres(config):
         return None
 
 def log_event(pg_conn, component, event_type, details):
+    """
+    Registra um evento de auditoria na tabela `event_table` do PostgreSQL.
+
+    Não faz nada se não houver conexão com o banco. Falhas na gravação são
+    apenas impressas, para não interromper o processamento principal.
+
+    Argumentos:
+        pg_conn: Conexão com o PostgreSQL, ou None se o banco não estiver disponível.
+        component (str): Nome do componente que gerou o evento (ex: "PRODUTOR").
+        event_type (str): Tipo do evento (ex: "START", "SEND_DATA").
+        details (dict): Dados adicionais do evento, gravados como JSON.
+    """
     if not pg_conn:
         return
     try:

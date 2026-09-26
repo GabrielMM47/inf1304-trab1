@@ -18,6 +18,14 @@ from kafka import KafkaConsumer
 from kubernetes import client, config as k8s_config
 
 def obter_configuracao():
+    """
+    Recupera a configuração do controlador a partir de variáveis de ambiente.
+
+    Retorna:
+        dict: Endereço do broker Kafka, tópico de comandos, grupo de consumo das
+        instâncias do controlador, namespace do Kubernetes onde os pods são
+        procurados e dados de conexão do PostgreSQL.
+    """
     return {
         "broker": os.environ.get("KAFKA_BROKER", "localhost:9092"),
         "topico": os.environ.get("KAFKA_TOPIC_COMANDOS", "comandos-fabrica"),
@@ -31,6 +39,21 @@ def obter_configuracao():
     }
 
 def init_postgres(config):
+    """
+    Conecta ao PostgreSQL e garante a existência da tabela `event_table`.
+
+    Os dados de conexão vêm da configuração (variáveis de ambiente). Se `PG_HOST`
+    não estiver definido, o controlador roda sem banco. A conexão usa autocommit,
+    então cada evento gravado é persistido imediatamente.
+
+    Argumentos:
+        config (dict): Configuração com as chaves `pg_host`, `pg_port`, `pg_db`,
+            `pg_user` e `pg_password`.
+
+    Retorna:
+        A conexão com o banco, ou None se `PG_HOST` não estiver definido ou se a
+        conexão falhar.
+    """
     if not config.get("pg_host"):
         return None
     try:
@@ -58,6 +81,18 @@ def init_postgres(config):
         return None
 
 def log_event(pg_conn, component, event_type, details):
+    """
+    Registra um evento de auditoria na tabela `event_table` do PostgreSQL.
+
+    Não faz nada se não houver conexão com o banco. Falhas na gravação são
+    apenas impressas, para não interromper o processamento principal.
+
+    Argumentos:
+        pg_conn: Conexão com o PostgreSQL, ou None se o banco não estiver disponível.
+        component (str): Nome do componente que gerou o evento (ex: "CONTROLADOR").
+        event_type (str): Tipo do evento (ex: "START", "MACHINE_KILLED").
+        details (dict): Dados adicionais do evento, gravados como JSON.
+    """
     if not pg_conn:
         return
     try:
@@ -111,6 +146,16 @@ def matar_pod(maquina_id, namespace, pg_conn):
         log_event(pg_conn, "CONTROLADOR", "KILL_ERROR", {"maquina_id": maquina_id, "error": str(e)})
 
 def main():
+    """
+    Função principal do controlador.
+
+    Conecta ao banco e à API do Kubernetes e consome o tópico de comandos no grupo
+    compartilhado pelas instâncias do controlador, de modo que cada comando é
+    tratado por apenas uma instância. Para cada comando `KILL` com um
+    `maquina_id`, remove os pods da máquina correspondente. Começa a ler do fim do
+    tópico (`auto_offset_reset='latest'`), ignorando comandos antigos. Ao ser
+    interrompido, fecha o consumidor e a conexão com o banco.
+    """
     config = obter_configuracao()
     pg_conn = init_postgres(config)
     init_k8s()

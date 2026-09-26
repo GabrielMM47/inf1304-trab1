@@ -119,7 +119,7 @@ scale-machine:
 	@echo "Escalando a máquina-$(MAQUINA) para $(P_REPLICAS) instâncias simultâneas..."
 	kubectl scale deployment producer-maquina-$(MAQUINA) --replicas=$(P_REPLICAS)
 
-C_REPLICAS ?= 4
+C_REPLICAS ?= 10
 scale-consumers:
 	@echo "Escalando o grupo de consumidores para $(C_REPLICAS) réplicas para acelerar o processamento..."
 	kubectl scale deployment consumer --replicas=$(C_REPLICAS)

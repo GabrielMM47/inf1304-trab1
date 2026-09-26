@@ -157,8 +157,8 @@ while true; do
 done
 
 # FASE 5: Cleanup Automático
-print_header "Fase 5: Cleanup Automático" "Restaurando a arquitetura ao seu estado pacífico padrão (Produtores=1, Consumidores=2)..."
+print_header "Fase 5: Cleanup Automático" "Restaurando a arquitetura ao seu estado pacífico padrão (Produtores=1, Consumidores=5)..."
 kubectl scale deployment producer-maquina-1 --replicas=1
-kubectl scale deployment consumer --replicas=2
+kubectl scale deployment consumer --replicas=5
 echo ""
 echo -e "\e[1;32m🎉 Validação Arquitetural Finalizada com Sucesso! 🎉\e[0m"

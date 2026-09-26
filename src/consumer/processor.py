@@ -262,7 +262,9 @@ def main():
         bootstrap_servers=[config["broker"]],
         group_id=config["group_id"],
         value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-        auto_offset_reset='earliest'
+        auto_offset_reset='earliest',
+        enable_auto_commit=True,
+        max_poll_interval_ms=600000  # 10 minutos para não dar timeout em demoras de I/O
     )
     
     produtor_comandos = KafkaProducer(
@@ -274,7 +276,10 @@ def main():
     
     try:
         for mensagem in consumidor:
-            processar_mensagem(mensagem.value, config, produtor_comandos, pg_conn)
+            try:
+                processar_mensagem(mensagem.value, config, produtor_comandos, pg_conn)
+            except Exception as e:
+                print(f"Erro ao processar mensagem (pulando para a próxima): {e}")
     except KeyboardInterrupt:
         print("Parando consumidor...")
     finally:

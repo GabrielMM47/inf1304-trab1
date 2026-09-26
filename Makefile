@@ -75,17 +75,17 @@ status:
 	kubectl get statefulset
 
 logs-producer:
-	kubectl logs -l app=producer -f
+	kubectl logs -l app=producer -f --max-log-requests=15
 
 kafka-lag:
 	@echo "Inspecionando a fila (LAG) dos Consumidores no Kafka..."
 	kubectl exec -t kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
 
 logs-consumer:
-	kubectl logs -l app=consumer -f
+	kubectl logs -l app=consumer -f --max-log-requests=15
 
 logs-controlador:
-	kubectl logs -l app=controlador -f
+	kubectl logs -l app=controlador -f --max-log-requests=15
 
 db-shell:
 	@echo "Acessando o terminal do PostgreSQL (Digite 'exit' para sair)..."

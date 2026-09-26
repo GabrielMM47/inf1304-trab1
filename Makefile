@@ -101,13 +101,15 @@ db-ui:
 	@echo "O Auto-Login está ativado. Você será conectado automaticamente na base fabrica!"
 	kubectl port-forward svc/adminer 8080:8080 --address 0.0.0.0
 
+P_REPLICAS ?= 3
 scale-producers:
-	@echo "Escalando a máquina-1 para 3 instâncias para gerar altíssima carga no Kafka..."
-	kubectl scale deployment producer-maquina-1 --replicas=3
+	@echo "Escalando a máquina-1 para $(P_REPLICAS) instâncias para gerar carga no Kafka..."
+	kubectl scale deployment producer-maquina-1 --replicas=$(P_REPLICAS)
 
+C_REPLICAS ?= 4
 scale-consumers:
-	@echo "Escalando o grupo de consumidores para 4 réplicas para acelerar o processamento..."
-	kubectl scale deployment consumer --replicas=4
+	@echo "Escalando o grupo de consumidores para $(C_REPLICAS) réplicas para acelerar o processamento..."
+	kubectl scale deployment consumer --replicas=$(C_REPLICAS)
 
 test-all:
 	@chmod +x scripts/test_interactive.sh

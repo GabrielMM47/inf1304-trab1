@@ -1,0 +1,86 @@
+[2026-09-26 01:10:03] Início do teste 'failover_broker'. Arquivo de log: logs/failover_broker_20260926_011003.log
+
+=================== ANTES: brokers, partições (líder/réplicas/ISR), grupo de consumo e banco ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          23m   10.42.0.173   distr   <none>           <none>
+kafka-1   1/1     Running   0          47m   10.42.0.162   distr   <none>           <none>
+kafka-2   1/1     Running   0          47m   10.42.0.163   distr   <none>           <none>
+$ kubectl exec kafka-0 -- kafka-topics --bootstrap-server localhost:9092 --describe --topic dados-sensores
+Topic: dados-sensores	TopicId: d6HacMBcQIenN3H1aqoZng	PartitionCount: 1	ReplicationFactor: 1	Configs: min.insync.replicas=1
+	Topic: dados-sensores	Partition: 0	Leader: 1	Replicas: 1	Isr: 1	Elr: 	LastKnownElr: 
+$ kubectl exec kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          2734            5163            2429            kafka-python-3.0.11-12ae7be1-3043-4b43-8c3e-543d4f5a3595 /10.42.0.160    kafka-python-3.0.11
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -tA -c SELECT now() AS momento, count(*) AS total_leituras FROM leituras_sensores;
+2026-09-26 04:10:07.283847+00|3375
+
+=================== FALHA: deletando à força o broker kafka-0 ===================
+[2026-09-26 01:10:07] 💀 Alvo travado: kafka-0
+[2026-09-26 01:10:07] Executando deleção forçada (simulando perda de energia ou kernel panic)...
+$ kubectl delete pod kafka-0 --force --grace-period=0
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "kafka-0" force deleted from default namespace
+[2026-09-26 01:10:07] Aguardando 30s para o cluster reagir...
+
+=================== DEPOIS: consultas feitas no broker sobrevivente (evitando kafka-0) ===================
+$ kubectl get pods -l app=kafka -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+kafka-0   1/1     Running   0          30s   10.42.0.177   distr   <none>           <none>
+kafka-1   1/1     Running   0          47m   10.42.0.162   distr   <none>           <none>
+kafka-2   1/1     Running   0          47m   10.42.0.163   distr   <none>           <none>
+$ kubectl exec kafka-1 -- kafka-topics --bootstrap-server localhost:9092 --describe --topic dados-sensores
+Topic: dados-sensores	TopicId: d6HacMBcQIenN3H1aqoZng	PartitionCount: 1	ReplicationFactor: 1	Configs: min.insync.replicas=1
+	Topic: dados-sensores	Partition: 0	Leader: 1	Replicas: 1	Isr: 1	Elr: 	LastKnownElr: 
+$ kubectl exec kafka-1 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+Warning: Consumer group 'sensor-group' is rebalancing.
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          2766            5226            2460            kafka-python-3.0.11-12ae7be1-3043-4b43-8c3e-543d4f5a3595 /10.42.0.160    kafka-python-3.0.11
+$ kubectl exec statefulset/postgres -- psql -U postgres -d fabrica -tA -c SELECT now() AS momento, count(*) AS total_leituras FROM leituras_sensores;
+2026-09-26 04:10:40.817991+00|3407
+
+=================== LOGS DOS CONSUMIDORES NA JANELA DA FALHA (últimos 30s) ===================
+$ kubectl logs -l app=consumer --prefix --timestamps --since=30s --tail=30 --max-log-requests=10
+[pod/consumer-6b45b6bcc7-qs9vd/consumer] 2026-09-26T01:10:17.333365483-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-qs9vd/consumer] 2026-09-26T01:10:17.433568377-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-qs9vd/consumer] 2026-09-26T01:10:17.433695670-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-tjpt5/consumer] 2026-09-26T01:10:17.329251952-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-tjpt5/consumer] 2026-09-26T01:10:17.429592911-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-tjpt5/consumer] 2026-09-26T01:10:17.429733329-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:25.968966675-03:00 Leitura recebida para temperatura: 85.32 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:26.005457734-03:00 ALERTA! Alta temperatura detectada: 85.32 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 85.32, 'timestamp': 1790394549.9015968}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:26.348507709-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:27.510931731-03:00 Leitura recebida para vibracao: 3.81 na máquina 'maquina-3'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:27.587041577-03:00 ALERTA! Alta vibracao detectada: 3.81 (Limite: 3.5) na máquina 'maquina-3' - Dados: {'maquina_id': 'maquina-3', 'vibracao': 3.81, 'timestamp': 1790394550.7466068}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:28.431435626-03:00 Leitura recebida para temperatura: 38.09 na máquina 'maquina-1'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:29.347880996-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:29.357651005-03:00 Leitura recebida para energia: 160.75 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:29.981750439-03:00 Leitura recebida para temperatura: 99.11 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:30.015274599-03:00 ALERTA! Alta temperatura detectada: 99.11 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 99.11, 'timestamp': 1790394551.3001163}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:30.582935768-03:00 Leitura recebida para vibracao: 3.82 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:30.583792073-03:00 ALERTA! Alta vibracao detectada: 3.82 (Limite: 3.5) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'vibracao': 3.82, 'timestamp': 1790394551.401234}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:31.313179500-03:00 Leitura recebida para co2: 965.17 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:31.321955289-03:00 ALERTA! Alta co2 detectada: 965.17 (Limite: 600.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'co2': 965.17, 'timestamp': 1790394552.3033278}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:32.348748901-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:32.650049888-03:00 Leitura recebida para temperatura: 95.86 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:32.650947965-03:00 ALERTA! Alta temperatura detectada: 95.86 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 95.86, 'timestamp': 1790394552.6403368}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:33.711000730-03:00 Leitura recebida para temperatura: 94.97 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:33.711844292-03:00 ALERTA! Alta temperatura detectada: 94.97 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 94.97, 'timestamp': 1790394553.943179}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:34.382819571-03:00 Leitura recebida para vibracao: 0.12 na máquina 'maquina-1'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:35.350173340-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:35.886928531-03:00 Leitura recebida para temperatura: 23.76 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:37.214926578-03:00 Leitura recebida para energia: 115.45 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:37.719777985-03:00 Leitura recebida para temperatura: 97.74 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:37.720741136-03:00 ALERTA! Alta temperatura detectada: 97.74 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 97.74, 'timestamp': 1790394556.5570958}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:38.351963371-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:38.751491689-03:00 Leitura recebida para energia: 397.9 na máquina 'maquina-5'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:38.752579168-03:00 ALERTA! Alta energia detectada: 397.9 (Limite: 350.0) na máquina 'maquina-5' - Dados: {'maquina_id': 'maquina-5', 'energia': 397.9, 'timestamp': 1790394556.591978}
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:39.471043582-03:00 Leitura recebida para energia: 257.17 na máquina 'maquina-4'
+[pod/consumer-6b45b6bcc7-8gh9q/consumer] 2026-09-26T01:10:40.419797852-03:00 Leitura recebida para energia: 219.66 na máquina 'maquina-1'
+[pod/consumer-6b45b6bcc7-gjpcl/consumer] 2026-09-26T01:10:17.329169274-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-gjpcl/consumer] 2026-09-26T01:10:17.429747556-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-gjpcl/consumer] 2026-09-26T01:10:17.429929484-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[2026-09-26 01:10:40] ✅ Falha injetada e evidências salvas em: logs/failover_broker_20260926_011003.log

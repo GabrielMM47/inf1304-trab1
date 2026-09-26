@@ -1,0 +1,381 @@
+[2026-09-26 01:32:58] Início do teste 'rebalanco_consumidor'. Arquivo de log: logs/rebalanco_consumidor_20260926_013258.log
+
+=================== ANTES: consumidores e partições atribuídas a cada um ===================
+$ kubectl get pods -l app=consumer -o wide
+NAME                        READY   STATUS    RESTARTS   AGE     IP            NODE    NOMINATED NODE   READINESS GATES
+consumer-6b45b6bcc7-9qjsw   1/1     Running   0          2m11s   10.42.0.192   distr   <none>           <none>
+consumer-6b45b6bcc7-9vqlq   1/1     Running   0          2m11s   10.42.0.189   distr   <none>           <none>
+consumer-6b45b6bcc7-fcwtg   1/1     Running   0          62s     10.42.0.205   distr   <none>           <none>
+consumer-6b45b6bcc7-fscxm   1/1     Running   0          62s     10.42.0.204   distr   <none>           <none>
+consumer-6b45b6bcc7-g49ck   1/1     Running   0          2m11s   10.42.0.190   distr   <none>           <none>
+consumer-6b45b6bcc7-hnzcl   1/1     Running   0          2m11s   10.42.0.193   distr   <none>           <none>
+consumer-6b45b6bcc7-mrlrr   1/1     Running   0          62s     10.42.0.206   distr   <none>           <none>
+consumer-6b45b6bcc7-pb4bv   1/1     Running   0          62s     10.42.0.208   distr   <none>           <none>
+consumer-6b45b6bcc7-xk8dq   1/1     Running   0          2m11s   10.42.0.191   distr   <none>           <none>
+consumer-6b45b6bcc7-xxwlg   1/1     Running   0          62s     10.42.0.207   distr   <none>           <none>
+$ kubectl exec kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          326             727             401             kafka-python-3.0.11-395d0720-e817-43dd-baeb-80387ce5d8ab /10.42.0.190    kafka-python-3.0.11
+
+=================== ÚLTIMAS LINHAS DE LOG DO CONSUMIDOR QUE SERÁ DERRUBADO (consumer-6b45b6bcc7-9qjsw) ===================
+$ kubectl logs consumer-6b45b6bcc7-9qjsw --tail=30 --timestamps
+2026-09-26T01:30:57.734326571-03:00 INFO:kafka.cluster:Starting metadata refresh loop
+2026-09-26T01:30:57.734451982-03:00 INFO:kafka.producer.kafka:<KafkaProducer client_id=kafka-python-producer-1 transactional_id=None>: Instantiated an idempotent producer.
+2026-09-26T01:30:57.735051817-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to -1 with epoch -1
+2026-09-26T01:30:57.735153753-03:00 INFO:kafka.net.manager:Initializing connection for node_id 0 at kafka-0.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+2026-09-26T01:30:57.735469245-03:00 Conectado! Escutando por mensagens...
+2026-09-26T01:30:57.735865883-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+2026-09-26T01:30:57.736599074-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.179:9092<-38448]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.192', 38448), raddr=('10.42.0.179', 9092)>
+2026-09-26T01:30:57.737201354-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.194:9092<-32932]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.192', 32932), raddr=('10.42.0.194', 9092)>
+2026-09-26T01:30:57.738443709-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=0 host=[10.42.0.179:9092<-38448] broker_version=(4, 3) (connected)>: Connected
+2026-09-26T01:30:57.740482294-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.194:9092<-32932] broker_version=(4, 3) (connected)>: Connected
+2026-09-26T01:30:57.741674832-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 1001 with epoch 0
+2026-09-26T01:30:57.742982300-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+2026-09-26T01:30:57.742992961-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+2026-09-26T01:30:57.743012517-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+2026-09-26T01:30:57.743856620-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-47412]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.192', 47412), raddr=('10.42.0.195', 9092)>
+2026-09-26T01:30:57.744410479-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+2026-09-26T01:30:57.744526941-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+2026-09-26T01:30:57.747340507-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-47412] broker_version=(4, 3) (connected)>: Connected
+2026-09-26T01:30:57.749774247-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-f139f9b9-4af5-44da-bd83-c3d7dfee7cca for group sensor-group; will retry join-group
+2026-09-26T01:30:57.749935996-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+2026-09-26T01:30:57.830111433-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+2026-09-26T01:31:03.543051468-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 1 (member_id: kafka-python-3.0.11-f139f9b9-4af5-44da-bd83-c3d7dfee7cca, protocol: range)>
+2026-09-26T01:31:03.568585144-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+2026-09-26T01:31:03.568600864-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+2026-09-26T01:31:57.578600293-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+2026-09-26T01:31:57.677640268-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+2026-09-26T01:31:57.678062754-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+2026-09-26T01:32:22.758824905-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-f139f9b9-4af5-44da-bd83-c3d7dfee7cca, protocol: range)>
+2026-09-26T01:32:22.766422763-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+2026-09-26T01:32:22.766799773-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+
+=================== FALHA: deletando o pod consumer-6b45b6bcc7-9qjsw ===================
+[2026-09-26 01:33:00] 💀 Alvo travado: consumer-6b45b6bcc7-9qjsw
+$ kubectl delete pod consumer-6b45b6bcc7-9qjsw
+pod "consumer-6b45b6bcc7-9qjsw" deleted from default namespace
+[2026-09-26 01:33:30] (comando terminou com código 124; 124 significa que estourou CMD_TIMEOUT_SEG=30s)
+[2026-09-26 01:33:30] Aguardando 20s para o Kafka detectar a saída e rebalancear...
+
+=================== DEPOIS: consumidores e partições (compare com o ANTES) ===================
+$ kubectl get pods -l app=consumer -o wide
+NAME                        READY   STATUS    RESTARTS   AGE    IP            NODE    NOMINATED NODE   READINESS GATES
+consumer-6b45b6bcc7-9vqlq   1/1     Running   0          3m3s   10.42.0.189   distr   <none>           <none>
+consumer-6b45b6bcc7-bpxjr   1/1     Running   0          50s    10.42.0.221   distr   <none>           <none>
+consumer-6b45b6bcc7-fcwtg   1/1     Running   0          114s   10.42.0.205   distr   <none>           <none>
+consumer-6b45b6bcc7-fscxm   1/1     Running   0          114s   10.42.0.204   distr   <none>           <none>
+consumer-6b45b6bcc7-g49ck   1/1     Running   0          3m3s   10.42.0.190   distr   <none>           <none>
+consumer-6b45b6bcc7-hnzcl   1/1     Running   0          3m3s   10.42.0.193   distr   <none>           <none>
+consumer-6b45b6bcc7-mrlrr   1/1     Running   0          114s   10.42.0.206   distr   <none>           <none>
+consumer-6b45b6bcc7-pb4bv   1/1     Running   0          114s   10.42.0.208   distr   <none>           <none>
+consumer-6b45b6bcc7-xk8dq   1/1     Running   0          3m3s   10.42.0.191   distr   <none>           <none>
+consumer-6b45b6bcc7-xxwlg   1/1     Running   0          114s   10.42.0.207   distr   <none>           <none>
+$ kubectl exec kafka-0 -- kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group sensor-group
+
+GROUP           TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                              HOST            CLIENT-ID
+sensor-group    dados-sensores  0          473             973             500             kafka-python-3.0.11-395d0720-e817-43dd-baeb-80387ce5d8ab /10.42.0.190    kafka-python-3.0.11
+
+=================== LOGS DOS CONSUMIDORES EM EXECUÇÃO (últimas 30 linhas de cada) ===================
+$ kubectl logs -l app=consumer --prefix --timestamps --tail=30 --max-log-requests=10
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.870215589-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.194:9092<-40210]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.189', 40210), raddr=('10.42.0.194', 9092)>
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.870608720-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.179:9092<-47700]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.189', 47700), raddr=('10.42.0.179', 9092)>
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.872058850-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.194:9092<-40210] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.873917863-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=0 host=[10.42.0.179:9092<-47700] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.874744522-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 3 with epoch 0
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.879448840-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.879465112-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.879475251-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.880464581-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-38238]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.189', 38238), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.881071841-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.881246125-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.884102412-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-38238] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.886276596-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-dc272ab0-ff96-4bb7-bdef-84999d80a5fa for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.886445228-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:30:57.966673586-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:31:03.539973026-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 1 (member_id: kafka-python-3.0.11-dc272ab0-ff96-4bb7-bdef-84999d80a5fa, protocol: range)>
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:31:03.565931163-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:31:03.565939028-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:31:57.578467180-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:31:57.676875005-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:31:57.677017357-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:32:22.763646317-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-dc272ab0-ff96-4bb7-bdef-84999d80a5fa, protocol: range)>
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:32:22.767841774-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:32:22.767846463-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:33:01.778274730-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:33:01.879086262-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:33:01.879100599-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:33:36.352730616-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-dc272ab0-ff96-4bb7-bdef-84999d80a5fa, protocol: range)>
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:33:36.358608798-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-9vqlq/consumer] 2026-09-26T01:33:36.358857934-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.482371136-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=bootstrap-0 host=[10.43.183.96:9092<-44444] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.483186324-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 0, coordinators: 0)
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.483225428-03:00 INFO:kafka.net.manager:Bootstrap complete: ClusterMetadata(brokers: 3, topics: 0, coordinators: 0)
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.483233844-03:00 INFO:kafka.net.manager:Closing bootstrap connection bootstrap-0
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.483274302-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.43.183.96:9092<-44444]>: Closing transport
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.483362851-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=bootstrap-0 broker_version=(4, 3) (disconnected)>: Connection closed
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.483420752-03:00 INFO:kafka.cluster:Starting metadata refresh loop
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.483510493-03:00 INFO:kafka.producer.kafka:<KafkaProducer client_id=kafka-python-producer-1 transactional_id=None>: Instantiated an idempotent producer.
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.483999176-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to -1 with epoch -1
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.484140005-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.484447182-03:00 Conectado! Escutando por mensagens...
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.484753869-03:00 INFO:kafka.net.manager:Initializing connection for node_id 0 at kafka-0.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.485230680-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.194:9092<-55154]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.221', 55154), raddr=('10.42.0.194', 9092)>
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.485885180-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.179:9092<-57140]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.221', 57140), raddr=('10.42.0.179', 9092)>
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.486903496-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.194:9092<-55154] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.488893198-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=0 host=[10.42.0.179:9092<-57140] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.489663058-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 11 with epoch 0
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.490858323-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.490872459-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.490917846-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.492006856-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-54788]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.221', 54788), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.492304626-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.492571777-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.495651942-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-54788] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.498579476-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-bb56ac36-b74e-4c3e-9c82-82495e42185a for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.498769970-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:01.580922970-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:36.353707232-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-bb56ac36-b74e-4c3e-9c82-82495e42185a, protocol: range)>
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:36.359054129-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-bpxjr/consumer] 2026-09-26T01:33:36.359074288-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.405220714-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.405223149-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.412965643-03:00 WARNING:kafka.coordinator:Marking the coordinator dead (node coordinator-2) for group sensor-group: [Error 16] NotCoordinatorError.
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.413038112-03:00 INFO:kafka.coordinator:Attempt to join group sensor-group failed due to obsolete coordinator information: NotCoordinatorError
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.517807079-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.518445478-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.518718930-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.526351865-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-98b0f639-6e64-497e-8454-28fb73931356 for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:30:57.527438841-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:31:03.539939392-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 1 (member_id: kafka-python-3.0.11-98b0f639-6e64-497e-8454-28fb73931356, protocol: range)>
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:31:03.539963278-03:00 INFO:kafka.coordinator:Elected group leader -- performing partition assignments using range
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:31:03.544745895-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:31:03.565277464-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:31:03.565399497-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:31:57.578502116-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:31:57.675765796-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:31:57.675866118-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:32:22.757845023-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-98b0f639-6e64-497e-8454-28fb73931356, protocol: range)>
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:32:22.757854510-03:00 INFO:kafka.coordinator:Elected group leader -- performing partition assignments using range
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:32:22.763104863-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:32:22.765937024-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:32:22.765939088-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:33:01.775229742-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:33:01.875872562-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:33:01.876035031-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:33:36.353720568-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-98b0f639-6e64-497e-8454-28fb73931356, protocol: range)>
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:33:36.353731799-03:00 INFO:kafka.coordinator:Elected group leader -- performing partition assignments using range
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:33:36.355896526-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:33:36.358465294-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-hnzcl/consumer] 2026-09-26T01:33:36.358471045-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.145777248-03:00 INFO:kafka.cluster:Starting metadata refresh loop
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.145943265-03:00 INFO:kafka.producer.kafka:<KafkaProducer client_id=kafka-python-producer-1 transactional_id=None>: Instantiated an idempotent producer.
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.146433221-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to -1 with epoch -1
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.146554753-03:00 INFO:kafka.net.manager:Initializing connection for node_id 2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.147068574-03:00 Conectado! Escutando por mensagens...
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.147325816-03:00 INFO:kafka.net.manager:Initializing connection for node_id 0 at kafka-0.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.148981730-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-41132]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.208', 41132), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.151713630-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.179:9092<-46776]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.208', 46776), raddr=('10.42.0.179', 9092)>
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.152736374-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=2 host=[10.42.0.195:9092<-41132] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.157036290-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 2005 with epoch 0
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.161059006-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=0 host=[10.42.0.179:9092<-46776] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.165825123-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.166012431-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.166210690-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.172451413-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.172783127-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-41142]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.208', 41142), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.173261241-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.181597027-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-41142] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.192665716-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-66c3fec2-d3db-4ad9-bd57-2ac58d39bc1b for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.192845219-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:31:57.227828040-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:32:22.759972247-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-66c3fec2-d3db-4ad9-bd57-2ac58d39bc1b, protocol: range)>
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:32:22.765918088-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:32:22.765928748-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:33:01.773773130-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:33:01.873786496-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:33:01.873884513-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:33:36.352758850-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-66c3fec2-d3db-4ad9-bd57-2ac58d39bc1b, protocol: range)>
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:33:36.359125235-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-pb4bv/consumer] 2026-09-26T01:33:36.359132218-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.671041405-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.194:9092<-57484]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.191', 57484), raddr=('10.42.0.194', 9092)>
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.671836425-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-55282]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.191', 55282), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.673609483-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.194:9092<-57484] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.676439179-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 2 with epoch 0
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.678454650-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=2 host=[10.42.0.195:9092<-55282] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.684384210-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.684404718-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.684406391-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.684989817-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-55296]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.191', 55296), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.685775658-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.686025626-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.692587783-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-55296] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.696268286-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-f888fbc4-39e4-4acb-ae11-43e689f3a391 for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.696845969-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:30:57.756786335-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:31:03.542879459-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 1 (member_id: kafka-python-3.0.11-f888fbc4-39e4-4acb-ae11-43e689f3a391, protocol: range)>
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:31:03.565172383-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:31:03.565190137-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:31:57.578581849-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:31:57.674617622-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:31:57.674707044-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:32:22.758502629-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-f888fbc4-39e4-4acb-ae11-43e689f3a391, protocol: range)>
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:32:22.767492125-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:32:22.767574202-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:33:01.776557319-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:33:01.877215146-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:33:01.877424216-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:33:36.355590160-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-f888fbc4-39e4-4acb-ae11-43e689f3a391, protocol: range)>
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:33:36.357523805-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-xk8dq/consumer] 2026-09-26T01:33:36.357533654-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.104847474-03:00 INFO:kafka.cluster:Starting metadata refresh loop
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.104956863-03:00 INFO:kafka.producer.kafka:<KafkaProducer client_id=kafka-python-producer-1 transactional_id=None>: Instantiated an idempotent producer.
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.105707487-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to -1 with epoch -1
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.105731923-03:00 Conectado! Escutando por mensagens...
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.106217021-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.106711756-03:00 INFO:kafka.net.manager:Initializing connection for node_id 0 at kafka-0.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.109277498-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.194:9092<-53060]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.205', 53060), raddr=('10.42.0.194', 9092)>
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.110744791-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.179:9092<-41316]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.205', 41316), raddr=('10.42.0.179', 9092)>
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.115754433-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.194:9092<-53060] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.117551287-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 8 with epoch 0
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.124313638-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=0 host=[10.42.0.179:9092<-41316] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.131603035-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.132507383-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.132617383-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.135043428-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.135283237-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-56222]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.205', 56222), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.135973876-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.150001950-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-56222] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.160237186-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-cac3c59b-134d-490a-a828-b159f579b3a2 for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.163749366-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:31:57.177361304-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:32:22.760730065-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-cac3c59b-134d-490a-a828-b159f579b3a2, protocol: range)>
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:32:22.766511983-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:32:22.766517984-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:33:01.776686506-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:33:01.877328914-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:33:01.878113834-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:33:36.353289023-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-cac3c59b-134d-490a-a828-b159f579b3a2, protocol: range)>
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:33:36.359743136-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-fcwtg/consumer] 2026-09-26T01:33:36.359791949-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.103524506-03:00 INFO:kafka.cluster:Starting metadata refresh loop
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.103685754-03:00 INFO:kafka.producer.kafka:<KafkaProducer client_id=kafka-python-producer-1 transactional_id=None>: Instantiated an idempotent producer.
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.106853627-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to -1 with epoch -1
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.106863496-03:00 INFO:kafka.net.manager:Initializing connection for node_id 2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.106872333-03:00 Conectado! Escutando por mensagens...
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.107335798-03:00 INFO:kafka.net.manager:Initializing connection for node_id 0 at kafka-0.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.108436210-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-42236]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.204', 42236), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.108669918-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.179:9092<-47352]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.204', 47352), raddr=('10.42.0.179', 9092)>
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.113976056-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=2 host=[10.42.0.195:9092<-42236] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.119524677-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 2004 with epoch 0
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.120488308-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=0 host=[10.42.0.179:9092<-47352] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.127305023-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.127435382-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.127440983-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.130123969-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-42244]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.204', 42244), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.132787218-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.132797116-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.145600429-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-42244] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.148673641-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-4f16f8d6-5dc8-4366-83bd-122997ae5729 for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.150424828-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:31:57.195696847-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:32:22.757459215-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-4f16f8d6-5dc8-4366-83bd-122997ae5729, protocol: range)>
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:32:22.768876480-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:32:22.769300210-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:33:01.778508237-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:33:01.879076643-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:33:01.879089027-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:33:36.352739403-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-4f16f8d6-5dc8-4366-83bd-122997ae5729, protocol: range)>
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:33:36.359758134-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-fscxm/consumer] 2026-09-26T01:33:36.359761500-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:44.271850920-03:00 Leitura recebida para temperatura: 30.71 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:44.559728404-03:00 Leitura recebida para temperatura: 40.75 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:44.794076277-03:00 Leitura recebida para temperatura: 37.41 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:45.242431148-03:00 Leitura recebida para temperatura: 56.72 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:45.550635180-03:00 Leitura recebida para temperatura: 26.16 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:45.919997850-03:00 Leitura recebida para temperatura: 48.56 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:46.271110709-03:00 Leitura recebida para energia: 272.11 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:46.510600578-03:00 Leitura recebida para temperatura: 54.69 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:46.851922338-03:00 Leitura recebida para vibracao: 3.4 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:47.303777679-03:00 Leitura recebida para temperatura: 82.72 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:47.303792186-03:00 ALERTA! Alta temperatura detectada: 82.72 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 82.72, 'timestamp': 1790397146.2845204}
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:47.757126844-03:00 Leitura recebida para energia: 334.23 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:48.166328965-03:00 Leitura recebida para temperatura: 55.36 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:48.430103696-03:00 Leitura recebida para temperatura: 90.56 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:48.430129034-03:00 ALERTA! Alta temperatura detectada: 90.56 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 90.56, 'timestamp': 1790397146.8356693}
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:48.885096622-03:00 Leitura recebida para temperatura: 75.44 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:49.125052681-03:00 Leitura recebida para temperatura: 51.18 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:49.529483156-03:00 Leitura recebida para temperatura: 21.83 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:50.031670577-03:00 Leitura recebida para energia: 251.37 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:50.251856291-03:00 Leitura recebida para temperatura: 34.08 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:50.643392148-03:00 Leitura recebida para temperatura: 55.24 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:50.857548442-03:00 Leitura recebida para vibracao: 4.75 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:50.857566135-03:00 ALERTA! Alta vibracao detectada: 4.75 (Limite: 3.5) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'vibracao': 4.75, 'timestamp': 1790397148.1491086}
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:51.252687313-03:00 Leitura recebida para temperatura: 51.21 na máquina 'maquina-1'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:51.496671359-03:00 Leitura recebida para vibracao: 0.95 na máquina 'maquina-1'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:51.790198649-03:00 Leitura recebida para temperatura: 96.86 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:51.790229648-03:00 ALERTA! Alta temperatura detectada: 96.86 (Limite: 80.0) na máquina 'maquina-2' - Dados: {'maquina_id': 'maquina-2', 'temperatura': 96.86, 'timestamp': 1790397148.1742694}
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:52.099949757-03:00 Leitura recebida para energia: 129.76 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:52.408659767-03:00 Leitura recebida para temperatura: 77.13 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-g49ck/consumer] 2026-09-26T01:33:52.659269303-03:00 Leitura recebida para temperatura: 24.48 na máquina 'maquina-2'
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.131980997-03:00 INFO:kafka.cluster:Starting metadata refresh loop
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.132317249-03:00 INFO:kafka.producer.kafka:<KafkaProducer client_id=kafka-python-producer-1 transactional_id=None>: Instantiated an idempotent producer.
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.132738043-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to -1 with epoch -1
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.132857733-03:00 Conectado! Escutando por mensagens...
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.133220866-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.134039501-03:00 INFO:kafka.net.manager:Initializing connection for node_id 0 at kafka-0.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.135053088-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.194:9092<-51080]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.206', 51080), raddr=('10.42.0.194', 9092)>
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.136093875-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.179:9092<-59252]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.206', 59252), raddr=('10.42.0.179', 9092)>
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.138391856-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=0 host=[10.42.0.179:9092<-59252] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.141762486-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.141874390-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.141876293-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.142239908-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.194:9092<-51080] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.143344480-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-34340]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.206', 34340), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.143951900-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.144110683-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.144939196-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 9 with epoch 0
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.152978947-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-34340] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.157585930-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-8a347e13-ab90-4d14-a50d-69a7ab3f1855 for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.158548069-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:31:57.217380177-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:32:22.758177017-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-8a347e13-ab90-4d14-a50d-69a7ab3f1855, protocol: range)>
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:32:22.769216420-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:32:22.769242139-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:33:01.777579923-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:33:01.878120115-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:33:01.879077425-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:33:36.353435062-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-8a347e13-ab90-4d14-a50d-69a7ab3f1855, protocol: range)>
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:33:36.357824369-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-mrlrr/consumer] 2026-09-26T01:33:36.359239884-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.225690937-03:00 INFO:kafka.cluster:Starting metadata refresh loop
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.225843879-03:00 INFO:kafka.producer.kafka:<KafkaProducer client_id=kafka-python-producer-1 transactional_id=None>: Instantiated an idempotent producer.
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.226325630-03:00 Conectado! Escutando por mensagens...
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.226339626-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to -1 with epoch -1
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.226512266-03:00 INFO:kafka.net.manager:Initializing connection for node_id 2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.227116701-03:00 INFO:kafka.net.manager:Initializing connection for node_id 1 at kafka-1.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.227813081-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-37818]>: connected to <socket.socket fd=11, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.207', 37818), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.229491328-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=2 host=[10.42.0.195:9092<-37818] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.231071908-03:00 INFO:kafka.producer.transaction_manager:ProducerId set to 2006 with epoch 0
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.231259337-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.194:9092<-59344]>: connected to <socket.socket fd=10, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.207', 59344), raddr=('10.42.0.194', 9092)>
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.233094232-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=1 host=[10.42.0.194:9092<-59344] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.234695843-03:00 INFO:kafka.cluster:Coordinator for GROUP/sensor-group is MetadataResponseBroker(node_id='coordinator-2', host='kafka-2.kafka-headless.default.svc.cluster.local', port=9092, rack=None)
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.234724778-03:00 INFO:kafka.coordinator:Discovered coordinator coordinator-2 for group sensor-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.234726862-03:00 INFO:kafka.net.manager:Initializing connection for node_id coordinator-2 at kafka-2.kafka-headless.default.svc.cluster.local:9092 (rack=None)
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.235825461-03:00 INFO:kafka.net.transport:<KafkaTCPTransport [10.42.0.195:9092<-37826]>: connected to <socket.socket fd=12, family=AddressFamily.AF_INET, type=SocketKind.SOCK_STREAM, proto=6, laddr=('10.42.0.207', 37826), raddr=('10.42.0.195', 9092)>
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.236135153-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.236346526-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.240265113-03:00 INFO:kafka.net.connection:<KafkaConnection node_id=coordinator-2 host=[10.42.0.195:9092<-37826] broker_version=(4, 3) (connected)>: Connected
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.242177427-03:00 INFO:kafka.coordinator:Received member id kafka-python-3.0.11-4add82c3-cd6c-475e-a47a-43c0419feb91 for group sensor-group; will retry join-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.242584686-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:31:57.321220814-03:00 INFO:kafka.cluster:Updated metadata: ClusterMetadata(brokers: 3, topics: 1, coordinators: 1)
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:32:22.759834464-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 2 (member_id: kafka-python-3.0.11-4add82c3-cd6c-475e-a47a-43c0419feb91, protocol: range)>
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:32:22.766655147-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:32:22.766661539-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:33:01.776728036-03:00 INFO:kafka.coordinator.heartbeat:Group sensor-group is rebalancing; rejoining.
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:33:01.876966110-03:00 INFO:kafka.coordinator.consumer:Revoking previously assigned partitions set() for group sensor-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:33:01.877312172-03:00 INFO:kafka.coordinator:(Re-)joining group sensor-group
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:33:36.352710859-03:00 INFO:kafka.coordinator:Successfully joined group sensor-group <Generation 3 (member_id: kafka-python-3.0.11-4add82c3-cd6c-475e-a47a-43c0419feb91, protocol: range)>
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:33:36.358393166-03:00 INFO:kafka.consumer.subscription_state:Updated partition assignment: []
+[pod/consumer-6b45b6bcc7-xxwlg/consumer] 2026-09-26T01:33:36.358405730-03:00 INFO:kafka.coordinator.consumer:Setting newly assigned partitions set() for group sensor-group
+[2026-09-26 01:33:53] ✅ Falha injetada e evidências salvas em: logs/rebalanco_consumidor_20260926_013258.log
